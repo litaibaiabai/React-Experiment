@@ -1,0 +1,23 @@
+# dependencies
+**/node_modules/
+**/build
+**/dist
+**/myenv
+**/exp
+**/datasets
+**/test
+**/.venv
+
+labelImg/
+data/
+label-studio-env/
+
+
+# misc
+**/.DS_Store
+.DS_Store
+*.zip
+*.lock
+*.pdf
+package-lock.json
+

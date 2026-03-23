@@ -1,0 +1,42 @@
+{
+  "defaultExperiment": {
+    "displayName": "小灯泡实验",
+    "classNames": [
+      "wire",
+      "battery",
+      "switch",
+      "batteryComp",
+      "lightbulb",
+      "lightbulbModel",
+      "switchConnected",
+      "batteryConnected",
+      "lightbulbConnected",
+      "lightbulbOrange",
+      "switchClosed"
+    ],
+    "stateRules": {
+      "init": {
+        "wire": 3,
+        "switch": 1,
+        "batteryComp": 1,
+        "lightbulb": 1,
+        "lightbulbModel": 1
+      },
+      "connect": {
+        "switchConnected": 1,
+        "batteryConnected": 1,
+        "lightbulbConnected": 1
+      },
+      "finish": {
+        "batteryConnected": 1,
+        "lightbulbOrange": 1,
+        "switchClosed": 1
+      }
+    },
+    "scoreRules": [
+      { "state": "init", "score": 10 },
+      { "state": "connect", "score": 10 },
+      { "state": "finish", "score": 10 }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+path: ../dataset
+train: train
+val: test
+
+nc: 11
+names:
+  [
+    "wire",
+    "battery",
+    "switch",
+    "batteryComp",
+    "lightbulb",
+    "lightbulbModel",
+    "switchConnected",
+    "batteryConnected",
+    "lightbulbConnected",
+    "lightbulbOrange",
+    "switchClosed"
+  ]
