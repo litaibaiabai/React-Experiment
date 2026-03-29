@@ -91,11 +91,6 @@ label {
   font-size: 14px;
 }
 
-input[type="range"] {
-  flex: 1;
-  min-width: 120px;
-}
-
 .status-box {
   margin-top: 12px;
   padding: 14px;
@@ -144,12 +139,93 @@ input[type="range"] {
   line-height: 1.4;
 }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.switch-row {
+  width: auto;
+  justify-content: flex-end;
+  color: #ddd;
+}
+
+.switch-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.score-summary {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #80ed99;
+}
+
+.score-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.score-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1b1b1b;
+  border: 1px solid #3a3a3a;
+}
+
+.score-card.done {
+  border-color: #80ed9955;
+  background: #1a241c;
+}
+
+.score-card.pending {
+  border-color: #666;
+}
+
+.score-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.score-card-title {
+  font-size: 15px;
+  color: #fff;
+}
+
+.score-card-score {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.score-card-status {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.score-card-status.done {
+  color: #80ed99;
+}
+
+.score-card-status.pending {
+  color: #bbb;
+}
+
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .small {
@@ -157,6 +233,15 @@ input[type="range"] {
   font-size: 13px;
   line-height: 1.6;
   word-break: break-word;
+}
+
+.debug-box {
+  min-height: 120px;
+  color: #d6e4ff;
+}
+
+.debug-title {
+  color: #fff;
 }
 
 @media (min-width: 768px) {
@@ -181,62 +266,5 @@ input[type="range"] {
   button {
     flex: 0 0 auto;
     min-width: 120px;
-  }
-
-  label {
-    width: auto;
-  }
-
-  .mono {
-    font-size: 13px;
-  }
-}
-
-@media (max-width: 480px) {
-  .page {
-    padding: 10px;
-    gap: 10px;
-  }
-
-  .left,
-  .right {
-    padding: 10px;
-    border-radius: 10px;
-  }
-
-  h2 {
-    font-size: 18px;
-  }
-
-  .viewer {
-    aspect-ratio: 3 / 4;
-  }
-
-  .controls {
-    gap: 8px;
-  }
-
-  button {
-    flex: 1 1 100%;
-    width: 100%;
-    font-size: 14px;
-    padding: 12px;
-  }
-
-  .status-box {
-    font-size: 16px;
-    padding: 12px;
-  }
-
-  .panel h3 {
-    font-size: 14px;
-  }
-
-  .mono {
-    font-size: 11px;
-  }
-
-  .small {
-    font-size: 12px;
   }
 }

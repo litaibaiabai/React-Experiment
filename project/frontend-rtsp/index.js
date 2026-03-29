@@ -1,9 +1,10 @@
 const API_URL = "/api/detect";
 const CONFIG_URL = "./config.json";
-const WEBSOCKET_URL = "/ws/rtsp"; // WebSocket endpoint for RTSP stream
+const WEBSOCKET_URL = "/ws/rtsp";
 const RTSP_URL = "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101";
 const DEFAULT_EXPERIMENT_NAME = "defaultExperiment";
 
+const videoEl = document.getElementById("rtspVideo");
 const videoCanvas = document.getElementById("videoCanvas");
 const overlay = document.getElementById("overlay");
 const videoCtx = videoCanvas.getContext("2d");
@@ -21,13 +22,14 @@ const stateBox = document.getElementById("stateBox");
 const confRange = document.getElementById("confRange");
 const confText = document.getElementById("confText");
 
-let mediaStream = null;
-let websocket = null;
+let flvPlayer = null;
+let websocketConnected = false;
 let detecting = false;
 let busy = false;
 let detectTimer = null;
 let configLoaded = false;
-let currentFrameData = null; // Store the latest frame data from WebSocket
+let renderTimer = null;
+let currentFrameReady = false;
 
 let currentExperimentName = DEFAULT_EXPERIMENT_NAME;
 let currentExperimentConfig = null;
@@ -81,32 +83,12 @@ async function loadExperimentConfig() {
   configLoaded = true;
 
   renderExperimentInfo();
-  // renderRulesInfo(); // No rules display element in HTML
   resetExperimentProgress();
 }
 
 function renderExperimentInfo() {
   const displayName = currentExperimentConfig.displayName || currentExperimentName;
   experimentInfo.textContent = `实验名称: ${displayName}\n`;
-}
-
-function renderRulesInfo() {
-  const lines = [];
-
-  for (const [stateName, rule] of Object.entries(STATE_RULES)) {
-    lines.push(`${stateName}:`);
-    for (const [className, count] of Object.entries(rule)) {
-      lines.push(`${className}=${count}`);
-    }
-    lines.push("");
-  }
-
-  if (SCORE_RULES.length) {
-    lines.push("得分规则:");
-    for (const item of SCORE_RULES) {
-      lines.push(`${item.state} +${item.score}分`);
-    }
-  }
 }
 
 function updateScoreUI() {
@@ -134,70 +116,19 @@ function applyScoreByState(state) {
 
 function checkCameraSupport() {
   btnStartCamera.disabled = false;
-  log("页面已就绪，等待打开摄像头");
-}
 
-async function startCamera() {
-  try {
-    // Close existing WebSocket if any
-    if (websocket) {
-      websocket.close();
-    }
-
-    // Connect to WebSocket server that handles RTSP stream
-    const wsUrl = WEBSOCKET_URL + '?rtsp_url=' + encodeURIComponent(RTSP_URL);
-    websocket = new WebSocket(wsUrl);
-
-    websocket.onopen = () => {
-      log("RTSP摄像头连接成功");
-      resizeCanvas();
-      btnStartDetect.disabled = !configLoaded;
-    };
-
-    websocket.onmessage = (event) => {
-      if (event.data instanceof Blob) {
-        // Handle video frame data
-        const img = new Image();
-        img.onload = () => {
-          // Store the latest frame for detection
-          currentFrameData = {
-            image: img,
-            width: img.width,
-            height: img.height
-          };
-
-          // Display the frame on canvas
-          videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
-          videoCtx.drawImage(img, 0, 0, videoCanvas.width, videoCanvas.height);
-        };
-        img.src = URL.createObjectURL(event.data);
-      }
-    };
-
-    websocket.onerror = (error) => {
-      log("RTSP摄像头连接错误: " + error.message);
-      console.error("WebSocket error:", error);
-    };
-
-    websocket.onclose = () => {
-      log("RTSP摄像头连接已断开");
-      if (detecting) {
-        stopDetect();
-      }
-    };
-  } catch (err) {
-    log("连接RTSP摄像头失败: " + err.message);
-    console.error(err);
+  if (typeof flvjs === "undefined") {
+    log("未加载 flv.js");
+    return;
   }
-}
 
-function stopCamera() {
-  if (websocket) {
-    websocket.close();
-    websocket = null;
+  if (!flvjs.isSupported()) {
+    log("当前浏览器不支持 flv.js 播放");
+    btnStartCamera.disabled = true;
+    return;
   }
-  currentFrameData = null;
-  videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+
+  log("页面已就绪，等待连接RTSP摄像头");
 }
 
 function resizeCanvas() {
@@ -209,6 +140,137 @@ function resizeCanvas() {
 }
 
 window.addEventListener("resize", resizeCanvas);
+
+function getWsFlvUrl() {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const host = location.host;
+  return `${protocol}//${host}${WEBSOCKET_URL}?rtsp_url=${encodeURIComponent(RTSP_URL)}`;
+}
+
+function startRenderLoop() {
+  stopRenderLoop();
+
+  const draw = () => {
+    if (
+      videoEl &&
+      videoEl.readyState >= 2 &&
+      videoEl.videoWidth > 0 &&
+      videoEl.videoHeight > 0
+    ) {
+      currentFrameReady = true;
+
+      videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+      videoCtx.drawImage(videoEl, 0, 0, videoCanvas.width, videoCanvas.height);
+    }
+
+    renderTimer = requestAnimationFrame(draw);
+  };
+
+  renderTimer = requestAnimationFrame(draw);
+}
+
+function stopRenderLoop() {
+  if (renderTimer) {
+    cancelAnimationFrame(renderTimer);
+    renderTimer = null;
+  }
+}
+
+async function startCamera() {
+  try {
+    stopCamera();
+    resizeCanvas();
+
+    const flvUrl = getWsFlvUrl();
+
+    flvPlayer = flvjs.createPlayer(
+      {
+        type: "flv",
+        url: flvUrl,
+        isLive: true,
+        hasAudio: false,
+        hasVideo: true
+      },
+      {
+        enableWorker: false,
+        enableStashBuffer: false,
+        stashInitialSize: 32,
+        isLive: true,
+        lazyLoad: false,
+        deferLoadAfterSourceOpen: false,
+        autoCleanupSourceBuffer: true,
+        autoCleanupMaxBackwardDuration: 1,
+        autoCleanupMinBackwardDuration: 0.5
+      }
+    );
+
+    flvPlayer.attachMediaElement(videoEl);
+
+    flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+      console.error("flv.js error:", errorType, errorDetail, errorInfo);
+      log(`视频播放错误: ${errorType} / ${errorDetail}`);
+    });
+
+    flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+      log("视频流加载完成");
+    });
+
+    flvPlayer.on(flvjs.Events.METADATA_ARRIVED, () => {
+      log("视频元数据已到达");
+    });
+
+    flvPlayer.load();
+
+    try {
+      await videoEl.play();
+    } catch (err) {
+      console.warn("video play warning:", err);
+    }
+
+    websocketConnected = true;
+    startRenderLoop();
+
+    btnStartDetect.disabled = !configLoaded;
+    log("RTSP摄像头连接成功");
+  } catch (err) {
+    log("连接RTSP摄像头失败: " + err.message);
+    console.error(err);
+  }
+}
+
+function stopCamera() {
+  websocketConnected = false;
+  currentFrameReady = false;
+  stopRenderLoop();
+
+  if (flvPlayer) {
+    try {
+      flvPlayer.pause();
+    } catch (_) {}
+
+    try {
+      flvPlayer.unload();
+    } catch (_) {}
+
+    try {
+      flvPlayer.detachMediaElement();
+    } catch (_) {}
+
+    try {
+      flvPlayer.destroy();
+    } catch (_) {}
+
+    flvPlayer = null;
+  }
+
+  if (videoEl) {
+    videoEl.removeAttribute("src");
+    videoEl.load();
+  }
+
+  videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
 
 function drawBoxes(boxes, frameW, frameH) {
   ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -291,7 +353,7 @@ function updateCountUI(counter) {
 
 function captureBlob() {
   return new Promise((resolve, reject) => {
-    if (!currentFrameData) {
+    if (!currentFrameReady || videoEl.readyState < 2 || videoEl.videoWidth <= 0) {
       reject(new Error("无可用视频帧"));
       return;
     }
@@ -299,8 +361,7 @@ function captureBlob() {
     captureCanvas.width = CAPTURE_WIDTH;
     captureCanvas.height = CAPTURE_HEIGHT;
 
-    // Draw the current frame to capture canvas
-    captureCtx.drawImage(currentFrameData.image, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
+    captureCtx.drawImage(videoEl, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
     captureCanvas.toBlob(
       (blob) => {
@@ -318,7 +379,7 @@ function captureBlob() {
 
 async function detectOnce() {
   if (!detecting || busy) return;
-  if (video.readyState < 2) return;
+  if (!currentFrameReady) return;
 
   busy = true;
 
@@ -339,14 +400,12 @@ async function detectOnce() {
     }
 
     const result = await res.json();
-
     const boxes = result.boxes || [];
+
     drawBoxes(boxes, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
     const counter = countClasses(boxes);
     const state = inferState(counter);
-
-    console.log("debug", boxes);
 
     updateCountUI(counter);
     updateStateUI(state);
@@ -361,12 +420,16 @@ async function detectOnce() {
 
 function startDetect() {
   if (detecting || !configLoaded) return;
+  if (!flvPlayer || !currentFrameReady) {
+    log("请先连接RTSP摄像头");
+    return;
+  }
 
   resetExperimentProgress();
   detecting = true;
   btnStartDetect.disabled = true;
   btnStopDetect.disabled = false;
-  log("开始实验，点击后已进入检测流程（后端推理）");
+  log("开始实验，已进入检测流程");
 
   detectOnce();
   detectTimer = setInterval(detectOnce, DETECT_INTERVAL);
@@ -381,7 +444,7 @@ function stopDetect() {
   }
 
   busy = false;
-  btnStartDetect.disabled = !mediaStream || !configLoaded;
+  btnStartDetect.disabled = !websocketConnected || !configLoaded;
   btnStopDetect.disabled = true;
 
   ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -399,9 +462,21 @@ window.addEventListener("beforeunload", () => {
   stopCamera();
 });
 
-btnStartCamera.disabled = false; // Enable RTSP connection button immediately
+btnStartCamera.disabled = false;
 btnStartDetect.disabled = true;
 btnStopDetect.disabled = true;
+
+setInterval(() => {
+  if (!videoEl || !videoEl.buffered || videoEl.buffered.length === 0) return;
+
+  const end = videoEl.buffered.end(videoEl.buffered.length - 1);
+  const lag = end - videoEl.currentTime;
+
+  // 落后太多时主动追到最新位置
+  if (lag > 1.0) {
+    videoEl.currentTime = Math.max(end - 0.15, 0);
+  }
+}, 500);
 
 (async function init() {
   try {
@@ -409,7 +484,6 @@ btnStopDetect.disabled = true;
     checkCameraSupport();
     log(`实验配置已加载: ${currentExperimentName}`);
   } catch (err) {
-    // experimentInfo.textContent = err.message;
     log(err.message);
     console.error(err);
   }

@@ -19,11 +19,6 @@
           <button id="btnStartCamera">打开摄像头</button>
           <button id="btnStartDetect" disabled>开始实验</button>
           <button id="btnStopDetect" disabled>停止实验</button>
-          <label>
-            置信度:
-            <input id="confRange" type="range" min="0.1" max="0.9" step="0.05" value="0.25" />
-            <span id="confText">0.25</span>
-          </label>
         </div>
         <div id="stateBox" class="status-box state-unknown">当前状态：unknown</div>
       </div>
@@ -32,18 +27,31 @@
           <h3>实验信息</h3>
           <div id="experimentInfo" class="small">等待加载实验配置...</div>
         </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>得分模式</h3>
+            <label class="switch-row" for="scoreModeToggle">
+              <span id="scoreModeText">按顺序得分</span>
+              <input id="scoreModeToggle" type="checkbox" />
+            </label>
+          </div>
+        </div>
+
         <div class="panel">
           <h3>实验得分</h3>
-          <div id="scoreInfo" class="mono">0 分</div>
+          <div id="scoreSummary" class="score-summary">总分：0 分</div>
+          <div id="scoreCards" class="score-cards"></div>
         </div>
+
         <div class="panel">
           <h3>检测计数</h3>
           <div id="countInfo" class="mono">等待检测...</div>
         </div>
 
         <div class="panel">
-          <h3>运行日志</h3>
-          <div id="log" class="mono">页面已加载</div>
+          <h3>得分调试信息</h3>
+          <div id="debugInfo" class="mono debug-box">等待检测...</div>
         </div>
       </div>
     </div>
