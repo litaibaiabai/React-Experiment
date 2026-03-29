@@ -1,10 +1,13 @@
 const API_URL = "/api/detect";
 const CONFIG_URL = "./config.json";
+const WEBSOCKET_URL = "/ws/rtsp";
+const RTSP_URL = "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101";
 const DEFAULT_EXPERIMENT_NAME = "defaultExperiment";
-const DETECT_CONFIDENCE = 0.25;
 
-const video = document.getElementById("video");
+const videoEl = document.getElementById("rtspVideo");
+const videoCanvas = document.getElementById("videoCanvas");
 const overlay = document.getElementById("overlay");
+const videoCtx = videoCanvas.getContext("2d");
 const ctx = overlay.getContext("2d");
 
 const btnStartCamera = document.getElementById("btnStartCamera");
@@ -12,19 +15,21 @@ const btnStartDetect = document.getElementById("btnStartDetect");
 const btnStopDetect = document.getElementById("btnStopDetect");
 
 const experimentInfo = document.getElementById("experimentInfo");
-const scoreSummary = document.getElementById("scoreSummary");
-const scoreCards = document.getElementById("scoreCards");
+const scoreInfo = document.getElementById("scoreInfo");
 const countInfo = document.getElementById("countInfo");
+const logEl = document.getElementById("log");
 const stateBox = document.getElementById("stateBox");
-const scoreModeToggle = document.getElementById("scoreModeToggle");
-const scoreModeText = document.getElementById("scoreModeText");
-const debugInfo = document.getElementById("debugInfo");
+const confRange = document.getElementById("confRange");
+const confText = document.getElementById("confText");
 
-let mediaStream = null;
+let flvPlayer = null;
+let websocketConnected = false;
 let detecting = false;
 let busy = false;
 let detectTimer = null;
 let configLoaded = false;
+let renderTimer = null;
+let currentFrameReady = false;
 
 let currentExperimentName = DEFAULT_EXPERIMENT_NAME;
 let currentExperimentConfig = null;
@@ -34,8 +39,6 @@ let SCORE_RULES = [];
 
 let experimentScore = 0;
 let experimentProgressIndex = 0;
-let stateScoreMap = new Map();
-let sequentialScoring = true;
 
 const CAPTURE_WIDTH = 640;
 const CAPTURE_HEIGHT = 640;
@@ -45,7 +48,14 @@ const DETECT_INTERVAL = 1200;
 const captureCanvas = document.createElement("canvas");
 const captureCtx = captureCanvas.getContext("2d", { willReadFrequently: true });
 
-function log() {}
+confRange.addEventListener("input", () => {
+  confText.textContent = confRange.value;
+});
+
+function log(msg) {
+  const time = new Date().toLocaleTimeString();
+  logEl.textContent = `[${time}] ${msg}`;
+}
 
 function getExperimentName() {
   const urlName = new URLSearchParams(location.search).get("experiment");
@@ -81,168 +91,186 @@ function renderExperimentInfo() {
   experimentInfo.textContent = `实验名称: ${displayName}\n`;
 }
 
-function updateScoreModeText() {
-  scoreModeText.textContent = sequentialScoring ? "按顺序得分" : "检测即得分";
-}
-
-function createInitialScoreMap() {
-  return new Map(SCORE_RULES.map((item) => [item.state, false]));
-}
-
-function renderScoreCards() {
-  scoreCards.innerHTML = "";
-
-  for (const rule of SCORE_RULES) {
-    const done = Boolean(stateScoreMap.get(rule.state));
-    const card = document.createElement("div");
-    card.className = `score-card ${done ? "done" : "pending"}`;
-
-    const left = document.createElement("div");
-    left.className = "score-card-left";
-
-    const title = document.createElement("div");
-    title.className = "score-card-title";
-    title.textContent = rule.state;
-
-    const points = document.createElement("div");
-    points.className = "score-card-score";
-    points.textContent = `分值：${Number(rule.score) || 0} 分`;
-
-    left.appendChild(title);
-    left.appendChild(points);
-
-    const right = document.createElement("div");
-    right.className = `score-card-status ${done ? "done" : "pending"}`;
-    right.textContent = done ? "已得分" : "未得分";
-
-    card.appendChild(left);
-    card.appendChild(right);
-    scoreCards.appendChild(card);
-  }
-}
-
 function updateScoreUI() {
-  scoreSummary.textContent = `总分：${experimentScore} 分`;
-  renderScoreCards();
+  const totalSteps = SCORE_RULES.length;
+  const finishedSteps = Math.min(experimentProgressIndex, totalSteps);
+  scoreInfo.textContent = `${experimentScore} 分\n进度: ${finishedSteps}/${totalSteps}`;
 }
 
 function resetExperimentProgress() {
   experimentScore = 0;
   experimentProgressIndex = 0;
-  stateScoreMap = createInitialScoreMap();
   updateScoreUI();
-  debugInfo.textContent = "等待检测...";
-}
-
-function markStateScored(rule) {
-  if (!rule || stateScoreMap.get(rule.state)) return false;
-  stateScoreMap.set(rule.state, true);
-  experimentScore += Number(rule.score) || 0;
-  updateScoreUI();
-  return true;
 }
 
 function applyScoreByState(state) {
-  if (!state || state === "unknown") {
-    return {
-      scored: false,
-      reason: "当前未匹配到可得分状态"
-    };
-  }
+  const currentRule = SCORE_RULES[experimentProgressIndex];
+  if (!currentRule) return;
+  if (state !== currentRule.state) return;
 
-  if (sequentialScoring) {
-    const currentRule = SCORE_RULES[experimentProgressIndex];
-
-    if (!currentRule) {
-      return {
-        scored: false,
-        reason: "全部状态已完成"
-      };
-    }
-
-    if (state !== currentRule.state) {
-      return {
-        scored: false,
-        reason: `顺序模式下，当前必须先完成 ${currentRule.state}，当前识别为 ${state}`
-      };
-    }
-
-    const added = markStateScored(currentRule);
-    if (added) {
-      experimentProgressIndex += 1;
-      return {
-        scored: true,
-        reason: `${state} 已得分`
-      };
-    }
-
-    return {
-      scored: false,
-      reason: `${state} 已经得过分，忽略重复计分`
-    };
-  }
-
-  const matchedRule = SCORE_RULES.find((item) => item.state === state);
-  if (!matchedRule) {
-    return {
-      scored: false,
-      reason: `状态 ${state} 不在得分配置中`
-    };
-  }
-
-  const added = markStateScored(matchedRule);
-  if (added) {
-    return {
-      scored: true,
-      reason: `${state} 已得分`
-    };
-  }
-
-  return {
-    scored: false,
-    reason: `${state} 已经得过分，忽略重复计分`
-  };
+  experimentScore += Number(currentRule.score) || 0;
+  experimentProgressIndex += 1;
+  updateScoreUI();
+  log(`实验状态达成: ${state}，当前得分 ${experimentScore} 分`);
 }
 
 function checkCameraSupport() {
   btnStartCamera.disabled = false;
-}
 
-async function startCamera() {
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" }
-      },
-      audio: false
-    });
-
-    video.srcObject = mediaStream;
-    await video.play();
-
-    resizeCanvas();
-    btnStartDetect.disabled = !configLoaded;
-  } catch (err) {
-    console.error(err);
-    alert("打开摄像头失败: " + err.message);
+  if (typeof flvjs === "undefined") {
+    log("未加载 flv.js");
+    return;
   }
-}
 
-function stopCamera() {
-  if (mediaStream) {
-    mediaStream.getTracks().forEach((track) => track.stop());
-    mediaStream = null;
+  if (!flvjs.isSupported()) {
+    log("当前浏览器不支持 flv.js 播放");
+    btnStartCamera.disabled = true;
+    return;
   }
-  video.srcObject = null;
+
+  log("页面已就绪，等待连接RTSP摄像头");
 }
 
 function resizeCanvas() {
-  const rect = video.getBoundingClientRect();
+  const rect = videoCanvas.parentElement.getBoundingClientRect();
+  videoCanvas.width = rect.width;
+  videoCanvas.height = rect.height;
   overlay.width = rect.width;
   overlay.height = rect.height;
 }
 
 window.addEventListener("resize", resizeCanvas);
+
+function getWsFlvUrl() {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const host = location.host;
+  return `${protocol}//${host}${WEBSOCKET_URL}?rtsp_url=${encodeURIComponent(RTSP_URL)}`;
+}
+
+function startRenderLoop() {
+  stopRenderLoop();
+
+  const draw = () => {
+    if (
+      videoEl &&
+      videoEl.readyState >= 2 &&
+      videoEl.videoWidth > 0 &&
+      videoEl.videoHeight > 0
+    ) {
+      currentFrameReady = true;
+
+      videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+      videoCtx.drawImage(videoEl, 0, 0, videoCanvas.width, videoCanvas.height);
+    }
+
+    renderTimer = requestAnimationFrame(draw);
+  };
+
+  renderTimer = requestAnimationFrame(draw);
+}
+
+function stopRenderLoop() {
+  if (renderTimer) {
+    cancelAnimationFrame(renderTimer);
+    renderTimer = null;
+  }
+}
+
+async function startCamera() {
+  try {
+    stopCamera();
+    resizeCanvas();
+
+    const flvUrl = getWsFlvUrl();
+
+    flvPlayer = flvjs.createPlayer(
+      {
+        type: "flv",
+        url: flvUrl,
+        isLive: true,
+        hasAudio: false,
+        hasVideo: true
+      },
+      {
+        enableWorker: false,
+        enableStashBuffer: false,
+        stashInitialSize: 32,
+        isLive: true,
+        lazyLoad: false,
+        deferLoadAfterSourceOpen: false,
+        autoCleanupSourceBuffer: true,
+        autoCleanupMaxBackwardDuration: 1,
+        autoCleanupMinBackwardDuration: 0.5
+      }
+    );
+
+    flvPlayer.attachMediaElement(videoEl);
+
+    flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+      console.error("flv.js error:", errorType, errorDetail, errorInfo);
+      log(`视频播放错误: ${errorType} / ${errorDetail}`);
+    });
+
+    flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+      log("视频流加载完成");
+    });
+
+    flvPlayer.on(flvjs.Events.METADATA_ARRIVED, () => {
+      log("视频元数据已到达");
+    });
+
+    flvPlayer.load();
+
+    try {
+      await videoEl.play();
+    } catch (err) {
+      console.warn("video play warning:", err);
+    }
+
+    websocketConnected = true;
+    startRenderLoop();
+
+    btnStartDetect.disabled = !configLoaded;
+    log("RTSP摄像头连接成功");
+  } catch (err) {
+    log("连接RTSP摄像头失败: " + err.message);
+    console.error(err);
+  }
+}
+
+function stopCamera() {
+  websocketConnected = false;
+  currentFrameReady = false;
+  stopRenderLoop();
+
+  if (flvPlayer) {
+    try {
+      flvPlayer.pause();
+    } catch (_) {}
+
+    try {
+      flvPlayer.unload();
+    } catch (_) {}
+
+    try {
+      flvPlayer.detachMediaElement();
+    } catch (_) {}
+
+    try {
+      flvPlayer.destroy();
+    } catch (_) {}
+
+    flvPlayer = null;
+  }
+
+  if (videoEl) {
+    videoEl.removeAttribute("src");
+    videoEl.load();
+  }
+
+  videoCtx.clearRect(0, 0, videoCanvas.width, videoCanvas.height);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
 
 function drawBoxes(boxes, frameW, frameH) {
   ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -285,48 +313,15 @@ function countClasses(boxes) {
 }
 
 function matchStrict(counter, rule) {
-  for (const [k, v] of Object.entries(rule || {})) {
-    if ((counter[k] || 0) < v) return false;
+  for (const [k, v] of Object.entries(rule)) {
+    if ((counter[k] || 0) !== v) return false;
   }
-  return true;
-}
-
-function analyzeRule(counter, rule) {
-  const missing = [];
-  const extra = [];
-  const satisfied = [];
 
   for (const name of CLASS_NAMES) {
-    const expected = Number(rule?.[name] || 0);
-    const actual = Number(counter?.[name] || 0);
-
-    if (expected <= 0) {
-      if (actual > 0) {
-        extra.push(`${name} 多了 ${actual}`);
-      }
-      continue;
-    }
-
-    if (actual < expected) {
-      missing.push(`${name} 还差 ${expected - actual}（当前${actual}/需要${expected}）`);
-    } else if (actual > expected) {
-      satisfied.push(`${name} 已满足（当前${actual}/需要${expected}）`);
-      extra.push(`${name} 多了 ${actual - expected}`);
-    } else {
-      satisfied.push(`${name} 已满足（当前${actual}/需要${expected}）`);
-    }
+    if (!(name in rule) && (counter[name] || 0) !== 0) return false;
   }
 
-  return {
-    matched: missing.length === 0,
-    missing,
-    extra,
-    satisfied
-  };
-}
-
-function getRuleByState(stateName) {
-  return STATE_RULES[stateName] || {};
+  return true;
 }
 
 function inferState(counter) {
@@ -356,66 +351,17 @@ function updateCountUI(counter) {
   countInfo.textContent = lines.length ? lines.join("\n") : "未检测到目标";
 }
 
-function formatRuleDebug(stateName, counter) {
-  const rule = getRuleByState(stateName);
-  const analysis = analyzeRule(counter, rule);
-  const lines = [];
-
-  lines.push(`目标状态: ${stateName}`);
-  lines.push(`规则匹配: ${analysis.matched ? "是" : "否"}`);
-  lines.push(`满足条件: ${analysis.satisfied.length ? analysis.satisfied.join("，") : "无"}`);
-  lines.push(`缺少类别: ${analysis.missing.length ? analysis.missing.join("，") : "无"}`);
-
-  return lines.join("\n");
-}
-
-function updateDebugUI(counter, state, scoreResult) {
-  const lines = [];
-  lines.push(`当前识别状态: ${state}`);
-  lines.push(`得分模式: ${sequentialScoring ? "按顺序得分" : "检测即得分"}`);
-  lines.push(`本轮得分结果: ${scoreResult?.scored ? "已加分" : "未加分"}`);
-  if (scoreResult?.reason) {
-    lines.push(`原因说明: ${scoreResult.reason}`);
-  }
-
-  if (sequentialScoring) {
-    const nextRule = SCORE_RULES[experimentProgressIndex];
-
-    if (!nextRule) {
-      lines.push("下一步状态: 全部状态已完成");
-    } else {
-      lines.push(`下一步必须满足状态: ${nextRule.state}`);
-      lines.push("");
-      lines.push(formatRuleDebug(nextRule.state, counter));
-    }
-  } else {
-    const pendingRules = SCORE_RULES.filter((item) => !stateScoreMap.get(item.state));
-
-    if (!pendingRules.length) {
-      lines.push("未得分状态检查: 全部状态已完成");
-    } else {
-      lines.push("未得分状态检查:");
-      for (const rule of pendingRules) {
-        lines.push("");
-        lines.push(formatRuleDebug(rule.state, counter));
-      }
-    }
-  }
-
-  debugInfo.textContent = lines.join("\n");
-}
-
 function captureBlob() {
   return new Promise((resolve, reject) => {
-    if (!video.videoWidth || !video.videoHeight) {
-      reject(new Error("视频尺寸不可用"));
+    if (!currentFrameReady || videoEl.readyState < 2 || videoEl.videoWidth <= 0) {
+      reject(new Error("无可用视频帧"));
       return;
     }
 
     captureCanvas.width = CAPTURE_WIDTH;
     captureCanvas.height = CAPTURE_HEIGHT;
 
-    captureCtx.drawImage(video, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
+    captureCtx.drawImage(videoEl, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
     captureCanvas.toBlob(
       (blob) => {
@@ -433,7 +379,7 @@ function captureBlob() {
 
 async function detectOnce() {
   if (!detecting || busy) return;
-  if (video.readyState < 2) return;
+  if (!currentFrameReady) return;
 
   busy = true;
 
@@ -442,7 +388,7 @@ async function detectOnce() {
 
     const formData = new FormData();
     formData.append("image", blob, "frame.jpg");
-    formData.append("conf", DETECT_CONFIDENCE);
+    formData.append("conf", confRange.value);
 
     const res = await fetch(API_URL, {
       method: "POST",
@@ -463,12 +409,10 @@ async function detectOnce() {
 
     updateCountUI(counter);
     updateStateUI(state);
-
-    const scoreResult = applyScoreByState(state);
-    updateDebugUI(counter, state, scoreResult);
+    applyScoreByState(state);
   } catch (err) {
+    log("检测失败: " + err.message);
     console.error(err);
-    debugInfo.textContent = `检测失败: ${err.message}`;
   } finally {
     busy = false;
   }
@@ -476,11 +420,16 @@ async function detectOnce() {
 
 function startDetect() {
   if (detecting || !configLoaded) return;
+  if (!flvPlayer || !currentFrameReady) {
+    log("请先连接RTSP摄像头");
+    return;
+  }
 
   resetExperimentProgress();
   detecting = true;
   btnStartDetect.disabled = true;
   btnStopDetect.disabled = false;
+  log("开始实验，已进入检测流程");
 
   detectOnce();
   detectTimer = setInterval(detectOnce, DETECT_INTERVAL);
@@ -495,22 +444,14 @@ function stopDetect() {
   }
 
   busy = false;
-  btnStartDetect.disabled = !mediaStream || !configLoaded;
+  btnStartDetect.disabled = !websocketConnected || !configLoaded;
   btnStopDetect.disabled = true;
 
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   updateStateUI("unknown");
   countInfo.textContent = "已停止检测";
-  debugInfo.textContent = "已停止检测";
+  log("停止实验");
 }
-
-scoreModeToggle.addEventListener("change", () => {
-  sequentialScoring = !scoreModeToggle.checked;
-  updateScoreModeText();
-  if (!detecting) {
-    resetExperimentProgress();
-  }
-});
 
 btnStartCamera.addEventListener("click", startCamera);
 btnStartDetect.addEventListener("click", startDetect);
@@ -521,17 +462,29 @@ window.addEventListener("beforeunload", () => {
   stopCamera();
 });
 
-btnStartCamera.disabled = true;
+btnStartCamera.disabled = false;
 btnStartDetect.disabled = true;
 btnStopDetect.disabled = true;
+
+setInterval(() => {
+  if (!videoEl || !videoEl.buffered || videoEl.buffered.length === 0) return;
+
+  const end = videoEl.buffered.end(videoEl.buffered.length - 1);
+  const lag = end - videoEl.currentTime;
+
+  // 落后太多时主动追到最新位置
+  if (lag > 1.0) {
+    videoEl.currentTime = Math.max(end - 0.15, 0);
+  }
+}, 500);
 
 (async function init() {
   try {
     await loadExperimentConfig();
-    updateScoreModeText();
     checkCameraSupport();
+    log(`实验配置已加载: ${currentExperimentName}`);
   } catch (err) {
+    log(err.message);
     console.error(err);
-    alert(err.message);
   }
 })();

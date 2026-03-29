@@ -11,7 +11,7 @@
 labelImg/
 data/
 label-studio-env/
-
+datahouse/
 
 # misc
 **/.DS_Store
