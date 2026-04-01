@@ -1,0 +1,76 @@
+{
+  "cameras": [
+    {
+      "id": "camera-1",
+      "name": "摄像头 1",
+      "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
+      "slot": 1
+    },
+    {
+      "id": "camera-2",
+      "name": "摄像头 2",
+      "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
+      "slot": 2
+    },
+    {
+      "id": "camera-3",
+      "name": "摄像头 3",
+      "rtspUrl": "rtsp://admin:@192.168.1.12:554/Streaming/Channels/101",
+      "slot": 3
+    },
+    {
+      "id": "camera-4",
+      "name": "摄像头 4",
+      "rtspUrl": "rtsp://admin:@192.168.1.13:554/Streaming/Channels/101",
+      "slot": 4
+    },
+    {
+      "id": "camera-5",
+      "name": "摄像头 5",
+      "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
+      "slot": 5
+    },
+    {
+      "id": "camera-6",
+      "name": "摄像头 6",
+      "rtspUrl": "rtsp://admin:@192.168.1.15:554/Streaming/Channels/101",
+      "slot": 6
+    },
+    {
+      "id": "camera-7",
+      "name": "摄像头 7",
+      "rtspUrl": "rtsp://admin:@192.168.1.16:554/Streaming/Channels/101",
+      "slot": 7
+    },
+    {
+      "id": "camera-8",
+      "name": "摄像头 8",
+      "rtspUrl": "rtsp://admin:@192.168.1.17:554/Streaming/Channels/101",
+      "slot": 8
+    },
+    {
+      "id": "camera-9",
+      "name": "摄像头 9",
+      "rtspUrl": "rtsp://admin:@192.168.1.18:554/Streaming/Channels/101",
+      "slot": 9
+    },
+    {
+      "id": "camera-10",
+      "name": "摄像头 10",
+      "rtspUrl": "rtsp://admin:@192.168.1.19:554/Streaming/Channels/101",
+      "slot": 10
+    },
+    {
+      "id": "camera-11",
+      "name": "摄像头 11",
+      "rtspUrl": "rtsp://admin:@192.168.1.20:554/Streaming/Channels/101",
+      "slot": 11
+    },
+    {
+      "id": "camera-12",
+      "name": "摄像头 12",
+      "rtspUrl": "rtsp://admin:@192.168.1.21:554/Streaming/Channels/101",
+      "slot": 12
+    }
+  ]
+}

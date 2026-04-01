@@ -1,0 +1,37 @@
+{
+  "displayName": "书包实验",
+  "description": "示例配置：切换到 best-bag.pt 模型进行识别与评分。",
+  "modelPath": "./best-bag.pt",
+  "classNames": [
+    "bag",
+    "strap",
+    "zipper",
+    "tag"
+  ],
+  "stateRules": {
+    "init": {
+      "bag": 1,
+      "strap": 2
+    },
+    "connect": {
+      "zipper": 1
+    },
+    "finish": {
+      "tag": 1
+    }
+  },
+  "scoreRules": [
+    {
+      "state": "init",
+      "score": 10
+    },
+    {
+      "state": "connect",
+      "score": 10
+    },
+    {
+      "state": "finish",
+      "score": 10
+    }
+  ]
+}
