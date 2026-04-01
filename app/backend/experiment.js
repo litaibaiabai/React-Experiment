@@ -17,6 +17,12 @@ const PYTHON_API = process.env.PYTHON_API || "http://127.0.0.1:3000/detect";
 const PYTHON_LOAD_MODEL_API = process.env.PYTHON_LOAD_MODEL_API || "http://127.0.0.1:3000/load-model";
 const EXPERIMENT_DIR = path.join(__dirname, "experiments");
 const CAMERA_CONFIG_PATH = path.join(__dirname, "cameras.json");
+const RESULT_DIR = path.join(__dirname, "results");
+const RESULT_LATEST_FILE = path.join(RESULT_DIR, "latest.json");
+const RESULT_HISTORY_FILE = path.join(RESULT_DIR, "history.jsonl");
+const CAPTURE_DIR = path.join(__dirname, "capture");
+const MIN_CAPTURE_WIDTH = Number(process.env.MIN_CAPTURE_WIDTH || 640);
+const MIN_CAPTURE_HEIGHT = Number(process.env.MIN_CAPTURE_HEIGHT || 360);
 
 const ffmpegPath = process.env.FFMPEG_PATH || "/opt/homebrew/bin/ffmpeg";
 
@@ -39,9 +45,7 @@ function readExperiments() {
     return {};
   }
 
-  const files = fs
-    .readdirSync(EXPERIMENT_DIR)
-    .filter((fileName) => fileName.endsWith(".json"));
+  const files = fs.readdirSync(EXPERIMENT_DIR).filter((fileName) => fileName.endsWith(".json"));
 
   return files.reduce((accumulator, fileName) => {
     const filePath = path.join(EXPERIMENT_DIR, fileName);
@@ -64,7 +68,8 @@ function readCameraConfig() {
     id: `camera-${index + 1}`,
     name: `摄像头 ${index + 1}`,
     rtspUrl: "",
-    slot: index + 1
+    slot: index + 1,
+    whitelist: false
   }));
 
   if (!fs.existsSync(CAMERA_CONFIG_PATH)) {
@@ -82,9 +87,7 @@ function readCameraConfig() {
 
 let experiments = readExperiments();
 let activeExperimentKey =
-  Object.keys(experiments).find((key) => experiments[key].isDefault) ||
-  Object.keys(experiments)[0] ||
-  null;
+  Object.keys(experiments).find((key) => experiments[key].isDefault) || Object.keys(experiments)[0] || null;
 
 function getExperiment(experimentKey = activeExperimentKey) {
   if (!experimentKey) {
@@ -185,6 +188,143 @@ function normalizeCameraList(cameras = []) {
   }));
 }
 
+function simplifyCameraResult(camera) {
+  return {
+    id: camera.id,
+    name: camera.name,
+    slot: camera.slot,
+    rtspUrl: camera.rtspUrl || "",
+    online: Boolean(camera.online),
+    error: camera.error || null,
+    resolutionCheck: camera.resolutionCheck || null,
+    totalScore: Number(camera.totalScore || 0),
+    maxScore: Number(camera.maxScore || 0),
+    completedStates: Array.isArray(camera.completedStates) ? camera.completedStates : [],
+    currentState: camera.currentState || null,
+    stateResults: Array.isArray(camera.stateResults)
+      ? camera.stateResults.map((state) => ({
+          state: state.state,
+          score: Number(state.score || 0),
+          earnedScore: Number(state.earnedScore || 0),
+          passed: Boolean(state.passed)
+        }))
+      : []
+  };
+}
+
+async function persistResultRecord(record) {
+  try {
+    await fs.promises.mkdir(RESULT_DIR, { recursive: true });
+    await fs.promises.writeFile(RESULT_LATEST_FILE, JSON.stringify(record, null, 2), "utf-8");
+    await fs.promises.appendFile(RESULT_HISTORY_FILE, `${JSON.stringify(record)}\n`, "utf-8");
+  } catch (persistError) {
+    console.error("[RESULT] 写入结果文件失败:", persistError.message);
+  }
+}
+
+function getJpegDimensions(buffer) {
+  if (!buffer || buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) {
+    return null;
+  }
+
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+
+    const marker = buffer[offset + 1];
+    if (marker === 0xd9 || marker === 0xda) {
+      break;
+    }
+
+    const segmentLength = buffer.readUInt16BE(offset + 2);
+    if (segmentLength < 2 || offset + 2 + segmentLength > buffer.length) {
+      break;
+    }
+
+    if (
+      marker === 0xc0 ||
+      marker === 0xc1 ||
+      marker === 0xc2 ||
+      marker === 0xc3 ||
+      marker === 0xc5 ||
+      marker === 0xc6 ||
+      marker === 0xc7 ||
+      marker === 0xc9 ||
+      marker === 0xca ||
+      marker === 0xcb ||
+      marker === 0xcd ||
+      marker === 0xce ||
+      marker === 0xcf
+    ) {
+      const height = buffer.readUInt16BE(offset + 5);
+      const width = buffer.readUInt16BE(offset + 7);
+      return { width, height };
+    }
+
+    offset += 2 + segmentLength;
+  }
+
+  return null;
+}
+
+function checkResolution(buffer) {
+  const resolution = getJpegDimensions(buffer);
+  if (!resolution) {
+    return {
+      width: 0,
+      height: 0,
+      minWidth: MIN_CAPTURE_WIDTH,
+      minHeight: MIN_CAPTURE_HEIGHT,
+      ok: false
+    };
+  }
+
+  return {
+    width: resolution.width,
+    height: resolution.height,
+    minWidth: MIN_CAPTURE_WIDTH,
+    minHeight: MIN_CAPTURE_HEIGHT,
+    ok: resolution.width >= MIN_CAPTURE_WIDTH && resolution.height >= MIN_CAPTURE_HEIGHT
+  };
+}
+
+async function persistCaptureImages(cameraId, rawBuffer, annotatedImageBase64, resolutionCheck) {
+  try {
+    await fs.promises.mkdir(CAPTURE_DIR, { recursive: true });
+    const safeCameraId = (cameraId || "camera").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const rawPath = path.join(CAPTURE_DIR, `${safeCameraId}_raw.jpg`);
+    const annotatedPath = path.join(CAPTURE_DIR, `${safeCameraId}_annotated.jpg`);
+    const metaPath = path.join(CAPTURE_DIR, `${safeCameraId}_meta.json`);
+
+    if (rawBuffer) {
+      await fs.promises.writeFile(rawPath, rawBuffer);
+    }
+
+    if (annotatedImageBase64) {
+      await fs.promises.writeFile(annotatedPath, Buffer.from(annotatedImageBase64, "base64"));
+    }
+
+    await fs.promises.writeFile(
+      metaPath,
+      JSON.stringify(
+        {
+          cameraId: cameraId || "camera",
+          timestamp: new Date().toISOString(),
+          resolutionCheck
+        },
+        null,
+        2
+      ),
+      "utf-8"
+    );
+  } catch (captureError) {
+    console.error("[CAPTURE] 写入抓拍文件失败:", captureError.message);
+  }
+}
+
 async function detectByBuffer(imageBuffer, experiment, conf = 0.25) {
   const form = new FormData();
   form.append("image", imageBuffer, {
@@ -205,10 +345,12 @@ async function detectByBuffer(imageBuffer, experiment, conf = 0.25) {
   return response.data;
 }
 
-function captureRtspFrame(rtspUrl) {
+function captureRtspFrameWithStrategy(rtspUrl, strategyName, transport) {
   return new Promise((resolve, reject) => {
     const chunks = [];
+    const stderrLines = [];
     let settled = false;
+    const MAX_STDERR_LINES = 20;
 
     const settleResolve = (buffer) => {
       if (settled) {
@@ -229,27 +371,35 @@ function captureRtspFrame(rtspUrl) {
     };
 
     const command = ffmpeg(rtspUrl)
-      .inputOptions([
-        "-rtsp_transport tcp",
-        "-rtsp_flags prefer_tcp",
-        "-rw_timeout 10000000",
-        "-timeout 10000000",
-        "-fflags nobuffer",
-        "-flags low_delay",
-        "-analyzeduration 1000000",
-        "-probesize 32768"
-      ])
+      .addInputOption("-hide_banner")
+      .addInputOption("-loglevel warning")
+      .inputOptions([`-rtsp_transport ${transport}`, "-fflags +genpts", "-analyzeduration 0", "-probesize 200000"])
       .noAudio()
       .format("image2pipe")
-      .outputOptions(["-frames:v 1", "-f image2", "-vcodec mjpeg", "-q:v 2"])
+      .outputOptions(["-map 0:v:0", "-frames:v 1", "-f image2", "-vcodec mjpeg", "-q:v 2"])
+      .on("start", () => {
+        console.log(`[RTSP][${strategyName}] 开始抓帧: ${rtspUrl}`);
+      })
+      .on("stderr", (line) => {
+        if (!line || !line.trim()) {
+          return;
+        }
+        stderrLines.push(line.trim());
+        if (stderrLines.length > MAX_STDERR_LINES) {
+          stderrLines.shift();
+        }
+      })
       .on("error", (error) => {
-        settleReject(error);
+        const detail = stderrLines.join(" | ");
+        const enhancedError = new Error(`[${strategyName}] ${error.message}${detail ? ` | ${detail}` : ""}`);
+        settleReject(enhancedError);
       });
 
     const timer = setTimeout(() => {
       safeKill(command);
-      settleReject(new Error("RTSP 截图超时"));
-    }, 12000);
+      const detail = stderrLines.join(" | ");
+      settleReject(new Error(`[${strategyName}] RTSP 截图超时${detail ? ` | ${detail}` : ""}`));
+    }, 6000);
 
     const stream = command.pipe();
 
@@ -259,7 +409,8 @@ function captureRtspFrame(rtspUrl) {
 
     stream.on("end", () => {
       if (!chunks.length) {
-        settleReject(new Error("RTSP 未返回有效图像帧"));
+        const detail = stderrLines.join(" | ");
+        settleReject(new Error(`[${strategyName}] RTSP 未返回有效图像帧${detail ? ` | ${detail}` : ""}`));
         return;
       }
       settleResolve(Buffer.concat(chunks));
@@ -273,9 +424,31 @@ function captureRtspFrame(rtspUrl) {
     });
 
     stream.on("error", (error) => {
-      settleReject(error);
+      const detail = stderrLines.join(" | ");
+      const enhancedError = new Error(`[${strategyName}] ${error.message}${detail ? ` | ${detail}` : ""}`);
+      settleReject(enhancedError);
     });
   });
+}
+
+async function captureRtspFrame(rtspUrl) {
+  const strategies = [
+    { name: "tcp", transport: "tcp" },
+    { name: "udp", transport: "udp" }
+  ];
+
+  const errors = [];
+  for (const strategy of strategies) {
+    try {
+      const frame = await captureRtspFrameWithStrategy(rtspUrl, strategy.name, strategy.transport);
+      return frame;
+    } catch (error) {
+      errors.push(error.message);
+      console.warn(`[RTSP][${strategy.name}] 抓帧失败: ${error.message}`);
+    }
+  }
+
+  throw new Error(`RTSP 抓帧失败: ${errors.join(" || ")}`);
 }
 
 async function analyzeOneCamera(camera, experiment, conf) {
@@ -294,7 +467,9 @@ async function analyzeOneCamera(camera, experiment, conf) {
   }
 
   const frameBuffer = await captureRtspFrame(camera.rtspUrl);
+  const resolutionCheck = checkResolution(frameBuffer);
   const detectResult = await detectByBuffer(frameBuffer, experiment, conf);
+  await persistCaptureImages(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
   const boxes = detectResult.boxes || [];
   const classCounts = buildClassCounts(boxes);
   const scoreResult = scoreExperiment(experiment, classCounts);
@@ -305,9 +480,99 @@ async function analyzeOneCamera(camera, experiment, conf) {
     error: null,
     boxes,
     classCounts,
-    snapshotBase64: frameBuffer.toString("base64"),
+    snapshotBase64: detectResult.annotatedImageBase64 || frameBuffer.toString("base64"),
+    resolutionCheck,
     ...scoreResult
   };
+}
+
+async function captureOneCamera(camera, experiment) {
+  if (!camera.rtspUrl) {
+    return {
+      camera,
+      ok: false,
+      error: "未配置 RTSP 地址",
+      frameBuffer: null
+    };
+  }
+
+  try {
+    const frameBuffer = await Promise.race([
+      captureRtspFrame(camera.rtspUrl),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("单路抓帧超时")), 6000);
+      })
+    ]);
+    return {
+      camera,
+      ok: true,
+      error: null,
+      frameBuffer
+    };
+  } catch (error) {
+    return {
+      camera,
+      ok: false,
+      error: error.message,
+      frameBuffer: null
+    };
+  }
+}
+
+async function detectOneCamera(captured, experiment, conf) {
+  const { camera, ok, error, frameBuffer } = captured;
+  if (!ok || !frameBuffer) {
+    return {
+      ...camera,
+      online: false,
+      error: error || "摄像头连接失败",
+      boxes: [],
+      classCounts: {},
+      stateResults: [],
+      totalScore: 0,
+      maxScore: scoreExperiment(experiment, {}).maxScore,
+      snapshotBase64: null
+    };
+  }
+
+  try {
+    const resolutionCheck = checkResolution(frameBuffer);
+    const detectResult = await Promise.race([
+      detectByBuffer(frameBuffer, experiment, conf),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("单路识别超时")), 8000);
+      })
+    ]);
+    await persistCaptureImages(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
+    const boxes = detectResult.boxes || [];
+    const classCounts = buildClassCounts(boxes);
+    const scoreResult = scoreExperiment(experiment, classCounts);
+    return {
+      ...camera,
+      online: true,
+      error: null,
+      boxes,
+      classCounts,
+      snapshotBase64: detectResult.annotatedImageBase64 || frameBuffer.toString("base64"),
+      resolutionCheck,
+      ...scoreResult
+    };
+  } catch (detectError) {
+    const resolutionCheck = checkResolution(frameBuffer);
+    await persistCaptureImages(camera.id, frameBuffer, null, resolutionCheck);
+    return {
+      ...camera,
+      online: false,
+      error: detectError.message,
+      boxes: [],
+      classCounts: {},
+      stateResults: [],
+      totalScore: 0,
+      maxScore: scoreExperiment(experiment, {}).maxScore,
+      snapshotBase64: frameBuffer.toString("base64"),
+      resolutionCheck
+    };
+  }
 }
 
 app.get("/api/experiments", async (req, res) => {
@@ -316,9 +581,7 @@ app.get("/api/experiments", async (req, res) => {
 
     if (!activeExperimentKey || !experiments[activeExperimentKey]) {
       activeExperimentKey =
-        Object.keys(experiments).find((key) => experiments[key].isDefault) ||
-        Object.keys(experiments)[0] ||
-        null;
+        Object.keys(experiments).find((key) => experiments[key].isDefault) || Object.keys(experiments)[0] || null;
     }
 
     return res.json({
@@ -394,7 +657,7 @@ app.get("/api/experiments/active", (req, res) => {
 
 app.post("/api/analyze-cameras", async (req, res) => {
   try {
-    const { experimentKey, cameras = [], conf = 0.25 } = req.body || {};
+    const { experimentKey, cameras = [], conf = 0.25, whitelistOnly = false } = req.body || {};
     const experiment = getExperiment(experimentKey);
 
     if (!experiment) {
@@ -405,30 +668,64 @@ app.post("/api/analyze-cameras", async (req, res) => {
     }
 
     const normalizedCameras = normalizeCameraList(cameras);
-    const results = await Promise.all(
-      normalizedCameras.map(async (camera) => {
-        try {
-          return await Promise.race([
-            analyzeOneCamera(camera, experiment, conf),
-            new Promise((_, reject) => {
-              setTimeout(() => reject(new Error("单路识别超时")), 15000);
-            })
-          ]);
-        } catch (error) {
-          return {
-            ...camera,
-            online: false,
-            error: error.message,
-            boxes: [],
-            classCounts: {},
-            stateResults: [],
-            totalScore: 0,
-            maxScore: scoreExperiment(experiment, {}).maxScore,
-            snapshotBase64: null
-          };
-        }
-      })
+    const allConfiguredCameras = normalizedCameras.filter((camera) => {
+      if (!camera.rtspUrl) {
+        return false;
+      }
+      return true;
+    });
+
+    let candidateCameras = allConfiguredCameras.filter((camera) => {
+      if (!whitelistOnly) {
+        return true;
+      }
+      return Boolean(camera.whitelist);
+    });
+
+    if (whitelistOnly && candidateCameras.length === 0) {
+      console.warn("[ANALYZE] 白名单模式开启，但白名单为空，自动回退到全部已配置摄像头");
+      candidateCameras = allConfiguredCameras;
+    }
+    const resultMap = {};
+    console.log(`[ANALYZE] 并行抓帧开始，摄像头数量: ${candidateCameras.length}, 白名单模式: ${whitelistOnly}`);
+    const capturedList = await Promise.all(candidateCameras.map((camera) => captureOneCamera(camera, experiment)));
+    console.log("[ANALYZE] 并行识别开始");
+    const analyzedResults = await Promise.all(
+      capturedList.map((captured) => detectOneCamera(captured, experiment, conf))
     );
+    analyzedResults.forEach((item) => {
+      resultMap[item.id] = item;
+    });
+    const results = normalizedCameras.map((camera) => {
+      if (resultMap[camera.id]) {
+        return resultMap[camera.id];
+      }
+      return {
+        ...camera,
+        online: false,
+        error: "未配置 RTSP 地址",
+        boxes: [],
+        classCounts: {},
+        stateResults: [],
+        totalScore: 0,
+        maxScore: scoreExperiment(experiment, {}).maxScore,
+        snapshotBase64: null
+      };
+    });
+
+    const summary = {
+      totalScore: results.reduce((sum, item) => sum + item.totalScore, 0),
+      maxScore: results.reduce((sum, item) => sum + item.maxScore, 0),
+      onlineCount: results.filter((item) => item.online).length
+    };
+
+    await persistResultRecord({
+      type: "batch_analyze",
+      timestamp: new Date().toISOString(),
+      experiment: serializeExperiment(experiment),
+      summary,
+      cameras: results.map(simplifyCameraResult)
+    });
 
     return res.json({
       code: 0,
@@ -436,11 +733,7 @@ app.post("/api/analyze-cameras", async (req, res) => {
       data: {
         experiment: serializeExperiment(experiment),
         cameras: results,
-        summary: {
-          totalScore: results.reduce((sum, item) => sum + item.totalScore, 0),
-          maxScore: results.reduce((sum, item) => sum + item.maxScore, 0),
-          onlineCount: results.filter((item) => item.online).length
-        }
+        summary
       }
     });
   } catch (error) {
@@ -472,13 +765,35 @@ app.post("/api/detect", upload.single("image"), async (req, res) => {
     }
 
     const response = await detectByBuffer(req.file.buffer, experiment, req.body.conf || "0.25");
+    const resolutionCheck = checkResolution(req.file.buffer);
+    await persistCaptureImages("single_detect", req.file.buffer, response.annotatedImageBase64 || null, resolutionCheck);
     const classCounts = buildClassCounts(response.boxes || []);
     const scoreResult = scoreExperiment(experiment, classCounts);
+
+    await persistResultRecord({
+      type: "single_detect",
+      timestamp: new Date().toISOString(),
+      experiment: serializeExperiment(experiment),
+      summary: {
+        totalScore: Number(scoreResult.totalScore || 0),
+        maxScore: Number(scoreResult.maxScore || 0),
+        onlineCount: 1
+      },
+      resolutionCheck,
+      classCounts,
+      stateResults: (scoreResult.stateResults || []).map((state) => ({
+        state: state.state,
+        score: Number(state.score || 0),
+        earnedScore: Number(state.earnedScore || 0),
+        passed: Boolean(state.passed)
+      }))
+    });
 
     return res.json({
       ...response,
       experiment: serializeExperiment(experiment),
       classCounts,
+      resolutionCheck,
       ...scoreResult
     });
   } catch (err) {
@@ -554,10 +869,12 @@ function createRtspFlvStream(rtspUrl, ws) {
     .on("error", (err) => {
       if (ws.readyState === WebSocket.OPEN) {
         try {
-          ws.send(JSON.stringify({
-            type: "error",
-            message: `FFmpeg错误: ${err.message}`
-          }));
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: `FFmpeg错误: ${err.message}`
+            })
+          );
         } catch (_) {}
       }
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {

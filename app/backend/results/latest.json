@@ -1,0 +1,231 @@
+{
+  "type": "batch_analyze",
+  "timestamp": "2026-04-01T03:24:14.333Z",
+  "experiment": {
+    "key": "defaultExperiment",
+    "displayName": "小灯泡实验",
+    "description": "根据器材连接状态判定实验完成度。",
+    "modelFile": "best-el.pt",
+    "classNames": [
+      "wire",
+      "battery",
+      "switch",
+      "batteryComp",
+      "lightbulb",
+      "lightbulbModel",
+      "switchConnected",
+      "batteryConnected",
+      "lightbulbConnected",
+      "lightbulbOrange",
+      "switchClosed"
+    ],
+    "stateRules": {
+      "init": {
+        "wire": 3,
+        "switch": 1,
+        "batteryComp": 1,
+        "lightbulb": 1,
+        "lightbulbModel": 1
+      },
+      "connect": {
+        "switchConnected": 1,
+        "batteryConnected": 1,
+        "lightbulbConnected": 1
+      },
+      "finish": {
+        "batteryConnected": 1,
+        "lightbulbOrange": 1,
+        "switchClosed": 1
+      }
+    },
+    "scoreRules": [
+      {
+        "state": "init",
+        "score": 10
+      },
+      {
+        "state": "connect",
+        "score": 10
+      },
+      {
+        "state": "finish",
+        "score": 10
+      }
+    ]
+  },
+  "summary": {
+    "totalScore": 0,
+    "maxScore": 360,
+    "onlineCount": 0
+  },
+  "cameras": [
+    {
+      "id": "camera-1",
+      "name": "摄像头 1",
+      "slot": 1,
+      "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-2",
+      "name": "摄像头 2",
+      "slot": 2,
+      "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-3",
+      "name": "摄像头 3",
+      "slot": 3,
+      "rtspUrl": "rtsp://admin:@192.168.1.12:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-4",
+      "name": "摄像头 4",
+      "slot": 4,
+      "rtspUrl": "rtsp://admin:@192.168.1.13:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-5",
+      "name": "摄像头 5",
+      "slot": 5,
+      "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-6",
+      "name": "摄像头 6",
+      "slot": 6,
+      "rtspUrl": "rtsp://admin:@192.168.1.15:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-7",
+      "name": "摄像头 7",
+      "slot": 7,
+      "rtspUrl": "rtsp://admin:@192.168.1.16:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-8",
+      "name": "摄像头 8",
+      "slot": 8,
+      "rtspUrl": "rtsp://admin:@192.168.1.17:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-9",
+      "name": "摄像头 9",
+      "slot": 9,
+      "rtspUrl": "rtsp://admin:@192.168.1.18:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-10",
+      "name": "摄像头 10",
+      "slot": 10,
+      "rtspUrl": "rtsp://admin:@192.168.1.19:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-11",
+      "name": "摄像头 11",
+      "slot": 11,
+      "rtspUrl": "rtsp://admin:@192.168.1.20:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    },
+    {
+      "id": "camera-12",
+      "name": "摄像头 12",
+      "slot": 12,
+      "rtspUrl": "rtsp://admin:@192.168.1.21:554/Streaming/Channels/101",
+      "online": false,
+      "error": "单路抓帧超时",
+      "resolutionCheck": null,
+      "totalScore": 0,
+      "maxScore": 30,
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
+    }
+  ]
+}

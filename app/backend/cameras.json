@@ -4,73 +4,85 @@
       "id": "camera-1",
       "name": "摄像头 1",
       "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
-      "slot": 1
+      "slot": 1,
+      "whitelist": false
     },
     {
       "id": "camera-2",
       "name": "摄像头 2",
       "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
-      "slot": 2
+      "slot": 2,
+      "whitelist": true
     },
     {
       "id": "camera-3",
       "name": "摄像头 3",
       "rtspUrl": "rtsp://admin:@192.168.1.12:554/Streaming/Channels/101",
-      "slot": 3
+      "slot": 3,
+      "whitelist": false
     },
     {
       "id": "camera-4",
       "name": "摄像头 4",
       "rtspUrl": "rtsp://admin:@192.168.1.13:554/Streaming/Channels/101",
-      "slot": 4
+      "slot": 4,
+      "whitelist": false
     },
     {
       "id": "camera-5",
       "name": "摄像头 5",
       "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
-      "slot": 5
+      "slot": 5,
+      "whitelist": false
     },
     {
       "id": "camera-6",
       "name": "摄像头 6",
       "rtspUrl": "rtsp://admin:@192.168.1.15:554/Streaming/Channels/101",
-      "slot": 6
+      "slot": 6,
+      "whitelist": false
     },
     {
       "id": "camera-7",
       "name": "摄像头 7",
       "rtspUrl": "rtsp://admin:@192.168.1.16:554/Streaming/Channels/101",
-      "slot": 7
+      "slot": 7,
+      "whitelist": false
     },
     {
       "id": "camera-8",
       "name": "摄像头 8",
       "rtspUrl": "rtsp://admin:@192.168.1.17:554/Streaming/Channels/101",
-      "slot": 8
+      "slot": 8,
+      "whitelist": false
     },
     {
       "id": "camera-9",
       "name": "摄像头 9",
       "rtspUrl": "rtsp://admin:@192.168.1.18:554/Streaming/Channels/101",
-      "slot": 9
+      "slot": 9,
+      "whitelist": false
     },
     {
       "id": "camera-10",
       "name": "摄像头 10",
       "rtspUrl": "rtsp://admin:@192.168.1.19:554/Streaming/Channels/101",
-      "slot": 10
+      "slot": 10,
+      "whitelist": false
     },
     {
       "id": "camera-11",
       "name": "摄像头 11",
       "rtspUrl": "rtsp://admin:@192.168.1.20:554/Streaming/Channels/101",
-      "slot": 11
+      "slot": 11,
+      "whitelist": false
     },
     {
       "id": "camera-12",
       "name": "摄像头 12",
       "rtspUrl": "rtsp://admin:@192.168.1.21:554/Streaming/Channels/101",
-      "slot": 12
+      "slot": 12,
+      "whitelist": false
     }
   ]
 }

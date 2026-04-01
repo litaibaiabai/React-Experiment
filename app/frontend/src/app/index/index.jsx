@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Button, Card, Empty, Select, Space, Spin, Tag, Typography, message } from "antd";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Card, Empty, Select, Space, Spin, Switch, Tag, Typography, message } from "antd";
 import { get, post } from "@/util/request";
 import "./index.less";
 
@@ -22,7 +22,7 @@ const createEmptyResultMap = () =>
       maxScore: 0,
       stateResults: [],
       classCounts: {},
-      error: "未识别"
+      error: null
     };
     return accumulator;
   }, {});
@@ -30,11 +30,20 @@ const createEmptyResultMap = () =>
 const College = () => {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [isRealtime, setIsRealtime] = useState(false);
+  const [whitelistOnly, setWhitelistOnly] = useState(false);
+  const [lastUpdateAt, setLastUpdateAt] = useState("");
   const [experiments, setExperiments] = useState([]);
   const [experimentKey, setExperimentKey] = useState("");
   const [selectedExperiment, setSelectedExperiment] = useState(null);
   const [cameras, setCameras] = useState(createEmptyCameras);
   const [cameraResultMap, setCameraResultMap] = useState(createEmptyResultMap);
+  const [focusedCameraId, setFocusedCameraId] = useState(null);
+  const analyzingRef = useRef(false);
+
+  useEffect(() => {
+    analyzingRef.current = analyzing;
+  }, [analyzing]);
 
   const fetchExperiments = async () => {
     setLoading(true);
@@ -56,7 +65,7 @@ const College = () => {
             maxScore: 0,
             stateResults: [],
             classCounts: {},
-            error: "未识别"
+            error: null
           };
           return accumulator;
         }, {})
@@ -89,36 +98,88 @@ const College = () => {
     }
   };
 
-  const handleAnalyzeAll = async () => {
+  const handleAnalyzeAll = useCallback(
+    async (options = {}) => {
+      const { silent = false } = options;
+      if (!experimentKey) {
+        if (!silent) {
+          message.warning("请先选择实验");
+        }
+        return;
+      }
+
+      if (analyzingRef.current) {
+        return;
+      }
+
+      setAnalyzing(true);
+      try {
+        const response = await post("/analyze-cameras", {
+          experimentKey,
+          cameras,
+          whitelistOnly
+        });
+
+        const nextResultMap = {};
+        (response?.data?.cameras || []).forEach((camera) => {
+          nextResultMap[camera.id] = camera;
+        });
+
+        setSelectedExperiment(response?.data?.experiment || selectedExperiment);
+        setCameraResultMap((prev) => ({
+          ...prev,
+          ...nextResultMap
+        }));
+        setLastUpdateAt(new Date().toLocaleTimeString());
+        if (!silent) {
+          message.success("识别完成");
+        }
+      } catch (error) {
+        if (!silent) {
+          message.error(error?.message || "摄像头识别失败");
+        }
+      } finally {
+        setAnalyzing(false);
+      }
+    },
+    [cameras, experimentKey, selectedExperiment, whitelistOnly]
+  );
+
+  const startRealtime = () => {
     if (!experimentKey) {
       message.warning("请先选择实验");
       return;
     }
 
-    setAnalyzing(true);
-    try {
-      const response = await post("/analyze-cameras", {
-        experimentKey,
-        cameras
-      });
-
-      const nextResultMap = {};
-      (response?.data?.cameras || []).forEach((camera) => {
-        nextResultMap[camera.id] = camera;
-      });
-
-      setSelectedExperiment(response?.data?.experiment || selectedExperiment);
-      setCameraResultMap((prev) => ({
-        ...prev,
-        ...nextResultMap
-      }));
-      message.success("12路摄像头识别完成");
-    } catch (error) {
-      message.error(error?.message || "摄像头识别失败");
-    } finally {
-      setAnalyzing(false);
-    }
+    setIsRealtime(true);
+    handleAnalyzeAll({ silent: true });
   };
+
+  const stopRealtime = () => {
+    setIsRealtime(false);
+  };
+
+  useEffect(() => {
+    if (!isRealtime || !experimentKey) {
+      return;
+    }
+
+    let stopped = false;
+    const loop = async () => {
+      while (!stopped) {
+        await handleAnalyzeAll({ silent: true });
+        if (stopped) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    };
+    loop();
+
+    return () => {
+      stopped = true;
+    };
+  }, [isRealtime, experimentKey, handleAnalyzeAll]);
 
   const cards = useMemo(
     () =>
@@ -128,6 +189,17 @@ const College = () => {
       })),
     [cameras, cameraResultMap]
   );
+
+  const visibleCards = useMemo(() => {
+    if (!focusedCameraId) {
+      return cards;
+    }
+    return cards.filter((camera) => camera.id === focusedCameraId);
+  }, [cards, focusedCameraId]);
+
+  const toggleFocus = (cameraId) => {
+    setFocusedCameraId((prev) => (prev === cameraId ? null : cameraId));
+  };
 
   if (loading && !experiments.length) {
     return (
@@ -157,19 +229,41 @@ const College = () => {
             onChange={handleSelectExperiment}
           />
           <Button onClick={fetchExperiments}>刷新实验</Button>
-          <Button type="primary" loading={analyzing} onClick={handleAnalyzeAll}>
-            开始识别
+          <Space size={6}>
+            <Text>仅白名单</Text>
+            <Switch checked={whitelistOnly} onChange={setWhitelistOnly} />
+          </Space>
+          <Button onClick={() => handleAnalyzeAll()}>单次识别</Button>
+          <Button type={isRealtime ? "default" : "primary"} loading={analyzing} onClick={startRealtime}>
+            开始实时
+          </Button>
+          <Button danger={isRealtime} onClick={stopRealtime}>
+            停止实时
           </Button>
         </Space>
       </div>
+      <div className="update-line">
+        <Text type="secondary">
+          实时状态：{isRealtime ? "运行中（连续刷新）" : "已停止"}
+          {whitelistOnly ? "，白名单模式开启" : "，白名单模式关闭"}
+          {lastUpdateAt ? `，最近更新 ${lastUpdateAt}` : ""}
+        </Text>
+      </div>
 
-      <div className="camera-grid">
-        {cards.map((camera) => (
+      <div className={`camera-grid ${focusedCameraId ? "camera-grid--focus" : ""}`}>
+        {visibleCards.map((camera) => (
           <Card
             key={camera.id}
             bordered={false}
             title={camera.name}
-            extra={<Tag color={camera.online ? "green" : "default"}>{camera.online ? "在线" : "未连接"}</Tag>}
+            extra={
+              <Space>
+                <Tag color={camera.online ? "green" : "default"}>{camera.online ? "在线" : "未连接"}</Tag>
+                <Button size="small" onClick={() => toggleFocus(camera.id)}>
+                  {focusedCameraId === camera.id ? "恢复" : "放大"}
+                </Button>
+              </Space>
+            }
           >
             <div className="card-body">
               <div className="snapshot-box">
@@ -187,7 +281,7 @@ const College = () => {
                     <span> / {camera.maxScore || 0}</span>
                   </Title>
                 </div>
-                {camera.error ? <Text type="danger">{camera.error}</Text> : null}
+                {camera.error ? <Text type="danger">摄像头连接失败</Text> : null}
                 <div className="state-list">
                   {(camera.stateResults || []).length ? (
                     camera.stateResults.map((state) => (
@@ -197,16 +291,6 @@ const College = () => {
                           <span>
                             {state.earnedScore}/{state.score} 分
                           </span>
-                        </div>
-                        <div className="state-requirements">
-                          {state.requirements.map((requirement) => (
-                            <Tag
-                              key={`${state.state}-${requirement.className}`}
-                              color={requirement.passed ? "success" : "error"}
-                            >
-                              {requirement.className}: {requirement.actual}/{requirement.required}
-                            </Tag>
-                          ))}
                         </div>
                       </div>
                     ))

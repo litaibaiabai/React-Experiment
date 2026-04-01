@@ -6,6 +6,7 @@ import io
 import uvicorn
 import json
 import os
+import base64
 
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,12 +87,13 @@ async def detect(
         results = active_model.predict(
             source=pil_image,
             conf=conf,
-            imgsz=640,
+            imgsz=512,
             verbose=False
         )
 
         result = results[0]
         boxes = []
+        annotated_image_base64 = None
 
         if result.boxes is not None:
             xyxy = result.boxes.xyxy.cpu().numpy()
@@ -124,10 +126,22 @@ async def detect(
                     "className": class_name
                 })
 
+        try:
+            plotted = result.plot()
+            if plotted is not None:
+                plotted_rgb = plotted[:, :, ::-1]
+                plotted_image = Image.fromarray(plotted_rgb)
+                output_buffer = io.BytesIO()
+                plotted_image.save(output_buffer, format="JPEG", quality=95)
+                annotated_image_base64 = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
+        except Exception:
+            annotated_image_base64 = None
+
         return {
             "code": 0,
             "msg": "success",
             "boxes": boxes,
+            "annotatedImageBase64": annotated_image_base64,
             "modelPath": CURRENT_MODEL_PATH
         }
 

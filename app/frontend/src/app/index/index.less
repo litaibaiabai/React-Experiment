@@ -19,6 +19,10 @@
   margin-bottom: 16px;
 }
 
+.update-line {
+  margin: 0 0 12px 0;
+}
+
 .title {
   margin: 0 0 20px 20px;
 }
@@ -55,6 +59,18 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.camera-grid--focus {
+  grid-template-columns: 1fr;
+}
+
+.camera-grid--focus .ant-card {
+  min-height: calc(100vh - 220px);
+}
+
+.camera-grid--focus .snapshot-box {
+  height: 62vh;
 }
 
 .camera-grid .ant-card {
@@ -135,13 +151,7 @@
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.state-requirements {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  margin-bottom: 0;
 }
 
 @media (max-width: 1440px) {

@@ -1,0 +1,11 @@
+{
+  "cameraId": "camera-2",
+  "timestamp": "2026-04-01T03:22:31.637Z",
+  "resolutionCheck": {
+    "width": 2304,
+    "height": 1296,
+    "minWidth": 640,
+    "minHeight": 360,
+    "ok": true
+  }
+}
