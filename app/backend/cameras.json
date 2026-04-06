@@ -5,7 +5,7 @@
       "name": "摄像头 1",
       "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
       "slot": 1,
-      "whitelist": false
+      "whitelist": true
     },
     {
       "id": "camera-2",

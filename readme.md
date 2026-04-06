@@ -86,3 +86,48 @@ yolo detect train \
   plots=False \
   deterministic=True \
   name=exp_final
+
+
+
+
+
+
+yolo detect train \
+  data=dataset/dataset.yaml \
+  model=yolo11n.pt \
+  imgsz=640 \
+  epochs=200 \
+  batch=16 \
+  device=mps \
+  cache=ram \
+  workers=0 \
+  amp=True \
+  close_mosaic=20 \
+  cos_lr=True \
+  lr0=0.005 \
+  mixup=0.1 \
+  blur=0.1 \
+  patience=50 \
+  name=exp_optimized
+
+
+
+yolo detect train \
+  data=dataset/dataset.yaml \
+  model=yolo11n.pt \
+  imgsz=640 \
+  epochs=300 \
+  batch=16 \
+  device=mps \
+  cache=ram \
+  workers=0 \
+  amp=True \
+  close_mosaic=20 \
+  cos_lr=True \
+  lr0=0.01 \
+  mixup=0.15 \
+  copy_paste=0.2 \
+  patience=50 \
+  box=10.0 \
+  cls=1.0 \
+  name=exp_v2_optimized

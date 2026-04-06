@@ -1,6 +1,6 @@
 {
   "type": "batch_analyze",
-  "timestamp": "2026-04-01T03:45:27.877Z",
+  "timestamp": "2026-04-01T14:30:29.401Z",
   "experiment": {
     "key": "defaultExperiment",
     "displayName": "小灯泡实验",
@@ -56,7 +56,7 @@
   "summary": {
     "totalScore": 0,
     "maxScore": 360,
-    "onlineCount": 0
+    "onlineCount": 2
   },
   "cameras": [
     {
@@ -64,28 +64,78 @@
       "name": "摄像头 1",
       "slot": 1,
       "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
-      "online": false,
-      "error": "单路抓帧超时",
-      "resolutionCheck": null,
+      "online": true,
+      "error": null,
+      "resolutionCheck": {
+        "width": 2304,
+        "height": 1296,
+        "minWidth": 640,
+        "minHeight": 360,
+        "ok": true
+      },
       "totalScore": 0,
       "maxScore": 30,
       "completedStates": [],
-      "currentState": null,
-      "stateResults": []
+      "currentState": "init",
+      "stateResults": [
+        {
+          "state": "init",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "connect",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "finish",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        }
+      ]
     },
     {
       "id": "camera-2",
       "name": "摄像头 2",
       "slot": 2,
       "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
-      "online": false,
-      "error": "单路抓帧超时",
-      "resolutionCheck": null,
+      "online": true,
+      "error": null,
+      "resolutionCheck": {
+        "width": 2304,
+        "height": 1296,
+        "minWidth": 640,
+        "minHeight": 360,
+        "ok": true
+      },
       "totalScore": 0,
       "maxScore": 30,
       "completedStates": [],
-      "currentState": null,
-      "stateResults": []
+      "currentState": "init",
+      "stateResults": [
+        {
+          "state": "init",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "connect",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "finish",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        }
+      ]
     },
     {
       "id": "camera-3",
@@ -93,7 +143,7 @@
       "slot": 3,
       "rtspUrl": "rtsp://admin:@192.168.1.12:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -107,7 +157,7 @@
       "slot": 4,
       "rtspUrl": "rtsp://admin:@192.168.1.13:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -121,7 +171,7 @@
       "slot": 5,
       "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -135,7 +185,7 @@
       "slot": 6,
       "rtspUrl": "rtsp://admin:@192.168.1.15:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -149,7 +199,7 @@
       "slot": 7,
       "rtspUrl": "rtsp://admin:@192.168.1.16:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -163,7 +213,7 @@
       "slot": 8,
       "rtspUrl": "rtsp://admin:@192.168.1.17:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -177,7 +227,7 @@
       "slot": 9,
       "rtspUrl": "rtsp://admin:@192.168.1.18:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -191,7 +241,7 @@
       "slot": 10,
       "rtspUrl": "rtsp://admin:@192.168.1.19:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -205,7 +255,7 @@
       "slot": 11,
       "rtspUrl": "rtsp://admin:@192.168.1.20:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -219,7 +269,7 @@
       "slot": 12,
       "rtspUrl": "rtsp://admin:@192.168.1.21:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
