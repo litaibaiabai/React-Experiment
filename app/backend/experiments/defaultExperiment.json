@@ -16,10 +16,23 @@
     "lightbulbOrange",
     "switchClosed"
   ],
+  "classNamesZn": [
+    "电线",
+    "电池",
+    "开关",
+    "开关座",
+    "灯泡",
+    "灯泡座",
+    "开关连接",
+    "电池座连接",
+    "灯泡连接",
+    "灯泡点亮",
+    "开关闭合"
+  ],
   "stateRules": {
     "init": {
       "wire": 3,
-      "switch": 1,
+      "switch｜switchConnected": 1,
       "batteryComp": 1,
       "lightbulb": 1,
       "lightbulbModel": 1
@@ -27,7 +40,7 @@
     "connect": {
       "switchConnected": 1,
       "batteryConnected": 1,
-      "lightbulbConnected": 1
+      "lightbulbConnected|lightbulbOrange": 1
     },
     "finish": {
       "batteryConnected": 1,

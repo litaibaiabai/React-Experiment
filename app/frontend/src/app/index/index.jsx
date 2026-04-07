@@ -114,10 +114,16 @@ const College = () => {
 
       setAnalyzing(true);
       try {
+        const lightweightMode = isRealtime;
+        const targetCameraIds = focusedCameraId ? [focusedCameraId] : [];
+        const imageCameraIds = focusedCameraId ? [focusedCameraId] : lightweightMode ? [] : cameras.map((item) => item.id);
         const response = await post("/analyze-cameras", {
           experimentKey,
           cameras,
-          whitelistOnly
+          whitelistOnly,
+          targetCameraIds,
+          lightweightMode,
+          imageCameraIds
         });
 
         const nextResultMap = {};
@@ -127,8 +133,18 @@ const College = () => {
 
         setSelectedExperiment(response?.data?.experiment || selectedExperiment);
         setCameraResultMap((prev) => ({
-          ...prev,
-          ...nextResultMap
+          ...Object.keys(nextResultMap).reduce((accumulator, cameraId) => {
+            const previousItem = prev[cameraId] || {};
+            const incomingItem = nextResultMap[cameraId] || {};
+            accumulator[cameraId] = {
+              ...previousItem,
+              ...incomingItem,
+              ...(incomingItem.snapshotBase64 === undefined
+                ? { snapshotBase64: previousItem.snapshotBase64 || null }
+                : {})
+            };
+            return accumulator;
+          }, { ...prev })
         }));
         setLastUpdateAt(new Date().toLocaleTimeString());
         if (!silent) {
@@ -142,7 +158,7 @@ const College = () => {
         setAnalyzing(false);
       }
     },
-    [cameras, experimentKey, selectedExperiment, whitelistOnly]
+    [cameras, experimentKey, selectedExperiment, whitelistOnly, focusedCameraId, isRealtime]
   );
 
   const startRealtime = () => {
@@ -245,6 +261,7 @@ const College = () => {
       <div className="update-line">
         <Text type="secondary">
           实时状态：{isRealtime ? "运行中（连续刷新）" : "已停止"}
+          {isRealtime ? "，轻量传输模式" : "，全量传输模式"}
           {whitelistOnly ? "，白名单模式开启" : "，白名单模式关闭"}
           {lastUpdateAt ? `，最近更新 ${lastUpdateAt}` : ""}
         </Text>

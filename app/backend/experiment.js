@@ -23,6 +23,10 @@ const RESULT_HISTORY_FILE = path.join(RESULT_DIR, "history.jsonl");
 const CAPTURE_DIR = path.join(__dirname, "capture");
 const MIN_CAPTURE_WIDTH = Number(process.env.MIN_CAPTURE_WIDTH || 640);
 const MIN_CAPTURE_HEIGHT = Number(process.env.MIN_CAPTURE_HEIGHT || 360);
+const CAPTURE_SAVE_INTERVAL_MS = Number(process.env.CAPTURE_SAVE_INTERVAL_MS || 1500);
+const cameraLastCaptureSaveAt = new Map();
+const cumulativeScoreMemory = new Map();
+let screenshotEnabled = String(process.env.SCREENSHOT_ENABLED || "1") !== "0";
 
 const ffmpegPath = process.env.FFMPEG_PATH || "/opt/homebrew/bin/ffmpeg";
 
@@ -146,14 +150,34 @@ function scoreExperiment(experiment, classCounts = {}) {
   const stateRules = experiment?.stateRules || {};
   const scoreRules = experiment?.scoreRules || [];
 
+  const parseAlternativeClassNames = (rawKey) => {
+    return String(rawKey || "")
+      .split(/[|｜]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const stateResults = scoreRules.map((rule) => {
-    const requirements = Object.entries(stateRules[rule.state] || {}).map(([className, required]) => {
-      const actual = classCounts[className] || 0;
+    const requirements = Object.entries(stateRules[rule.state] || {}).map(([classKey, required]) => {
+      const alternatives = parseAlternativeClassNames(classKey);
+      const actualList = alternatives.map((name) => ({
+        className: name,
+        actual: classCounts[name] || 0
+      }));
+      const bestMatched =
+        actualList.reduce((best, current) => (current.actual > best.actual ? current : best), {
+          className: alternatives[0] || classKey,
+          actual: 0
+        }) || { className: classKey, actual: 0 };
+      const passed = actualList.some((item) => item.actual >= required);
+
       return {
-        className,
+        className: classKey,
+        alternatives,
         required,
-        actual,
-        passed: actual >= required
+        actual: bestMatched.actual,
+        matchedClassName: bestMatched.className,
+        passed
       };
     });
 
@@ -177,6 +201,64 @@ function scoreExperiment(experiment, classCounts = {}) {
     currentState: stateResults.find((item) => !item.passed)?.state || "finish",
     stateResults
   };
+}
+
+function getCumulativeScoreKey(experimentKey, cameraId) {
+  return `${experimentKey || "default"}::${cameraId || "camera"}`;
+}
+
+function getCumulativeScoreSnapshot(experimentKey, cameraId, experiment) {
+  const key = getCumulativeScoreKey(experimentKey, cameraId);
+  if (cumulativeScoreMemory.has(key)) {
+    return cumulativeScoreMemory.get(key);
+  }
+  return scoreExperiment(experiment, {});
+}
+
+function applyCumulativeScore(experimentKey, cameraId, experiment, currentScoreResult) {
+  const key = getCumulativeScoreKey(experimentKey, cameraId);
+  const previous = cumulativeScoreMemory.get(key);
+  const previousPassedMap = (previous?.stateResults || []).reduce((acc, state) => {
+    acc[state.state] = Boolean(state.passed);
+    return acc;
+  }, {});
+  const currentMap = (currentScoreResult?.stateResults || []).reduce((acc, state) => {
+    acc[state.state] = state;
+    return acc;
+  }, {});
+  const scoreRuleMap = (experiment?.scoreRules || []).reduce((acc, rule) => {
+    acc[rule.state] = Number(rule.score || 0);
+    return acc;
+  }, {});
+
+  const stateResults = (experiment?.scoreRules || []).map((rule) => {
+    const stateName = rule.state;
+    const currentState = currentMap[stateName] || {
+      state: stateName,
+      score: Number(rule.score || 0),
+      earnedScore: 0,
+      passed: false,
+      requirements: []
+    };
+    const cumulativePassed = Boolean(previousPassedMap[stateName] || currentState.passed);
+    return {
+      ...currentState,
+      score: Number(rule.score || currentState.score || 0),
+      passed: cumulativePassed,
+      earnedScore: cumulativePassed ? Number(scoreRuleMap[stateName] || 0) : 0
+    };
+  });
+
+  const merged = {
+    totalScore: stateResults.reduce((sum, state) => sum + Number(state.earnedScore || 0), 0),
+    maxScore: (experiment?.scoreRules || []).reduce((sum, rule) => sum + Number(rule.score || 0), 0),
+    completedStates: stateResults.filter((state) => state.passed).map((state) => state.state),
+    currentState: stateResults.find((state) => !state.passed)?.state || "finish",
+    stateResults
+  };
+
+  cumulativeScoreMemory.set(key, merged);
+  return merged;
 }
 
 function normalizeCameraList(cameras = []) {
@@ -292,6 +374,10 @@ function checkResolution(buffer) {
 }
 
 async function persistCaptureImages(cameraId, rawBuffer, annotatedImageBase64, resolutionCheck) {
+  if (!screenshotEnabled) {
+    return;
+  }
+
   try {
     await fs.promises.mkdir(CAPTURE_DIR, { recursive: true });
     const safeCameraId = (cameraId || "camera").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -325,7 +411,23 @@ async function persistCaptureImages(cameraId, rawBuffer, annotatedImageBase64, r
   }
 }
 
-async function detectByBuffer(imageBuffer, experiment, conf = 0.25) {
+function persistCaptureImagesNonBlocking(cameraId, rawBuffer, annotatedImageBase64, resolutionCheck) {
+  if (!screenshotEnabled) {
+    return;
+  }
+
+  const key = cameraId || "camera";
+  const now = Date.now();
+  const lastSaveAt = cameraLastCaptureSaveAt.get(key) || 0;
+  if (now - lastSaveAt < CAPTURE_SAVE_INTERVAL_MS) {
+    return;
+  }
+  cameraLastCaptureSaveAt.set(key, now);
+  void persistCaptureImages(cameraId, rawBuffer, annotatedImageBase64, resolutionCheck);
+}
+
+async function detectByBuffer(imageBuffer, experiment, conf = 0.25, options = {}) {
+  const { returnAnnotated = true } = options;
   const form = new FormData();
   form.append("image", imageBuffer, {
     filename: "frame.jpg",
@@ -334,6 +436,7 @@ async function detectByBuffer(imageBuffer, experiment, conf = 0.25) {
   form.append("conf", String(conf));
   form.append("model_path", experiment.modelPath);
   form.append("class_names", JSON.stringify(experiment.classNames || []));
+  form.append("return_annotated", returnAnnotated ? "1" : "0");
 
   const response = await axios.post(PYTHON_API, form, {
     headers: form.getHeaders(),
@@ -469,10 +572,15 @@ async function analyzeOneCamera(camera, experiment, conf) {
   const frameBuffer = await captureRtspFrame(camera.rtspUrl);
   const resolutionCheck = checkResolution(frameBuffer);
   const detectResult = await detectByBuffer(frameBuffer, experiment, conf);
-  await persistCaptureImages(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
+  persistCaptureImagesNonBlocking(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
   const boxes = detectResult.boxes || [];
   const classCounts = buildClassCounts(boxes);
-  const scoreResult = scoreExperiment(experiment, classCounts);
+  const scoreResult = applyCumulativeScore(
+    experiment.key,
+    camera.id,
+    experiment,
+    scoreExperiment(experiment, classCounts)
+  );
 
   return {
     ...camera,
@@ -480,7 +588,9 @@ async function analyzeOneCamera(camera, experiment, conf) {
     error: null,
     boxes,
     classCounts,
-    snapshotBase64: detectResult.annotatedImageBase64 || frameBuffer.toString("base64"),
+    snapshotBase64: screenshotEnabled
+      ? detectResult.annotatedImageBase64 || frameBuffer.toString("base64")
+      : null,
     resolutionCheck,
     ...scoreResult
   };
@@ -519,18 +629,18 @@ async function captureOneCamera(camera, experiment) {
   }
 }
 
-async function detectOneCamera(captured, experiment, conf) {
+async function detectOneCamera(captured, experiment, conf, options = {}) {
+  const { includeImage = true } = options;
   const { camera, ok, error, frameBuffer } = captured;
   if (!ok || !frameBuffer) {
+    const cumulativeScore = getCumulativeScoreSnapshot(experiment.key, camera.id, experiment);
     return {
       ...camera,
       online: false,
       error: error || "摄像头连接失败",
       boxes: [],
       classCounts: {},
-      stateResults: [],
-      totalScore: 0,
-      maxScore: scoreExperiment(experiment, {}).maxScore,
+      ...cumulativeScore,
       snapshotBase64: null
     };
   }
@@ -538,38 +648,46 @@ async function detectOneCamera(captured, experiment, conf) {
   try {
     const resolutionCheck = checkResolution(frameBuffer);
     const detectResult = await Promise.race([
-      detectByBuffer(frameBuffer, experiment, conf),
+      detectByBuffer(frameBuffer, experiment, conf, { returnAnnotated: includeImage }),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error("单路识别超时")), 8000);
       })
     ]);
-    await persistCaptureImages(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
+    persistCaptureImagesNonBlocking(camera.id, frameBuffer, detectResult.annotatedImageBase64 || null, resolutionCheck);
     const boxes = detectResult.boxes || [];
     const classCounts = buildClassCounts(boxes);
-    const scoreResult = scoreExperiment(experiment, classCounts);
+    const scoreResult = applyCumulativeScore(
+      experiment.key,
+      camera.id,
+      experiment,
+      scoreExperiment(experiment, classCounts)
+    );
+    const imageBase64 =
+      screenshotEnabled && includeImage
+        ? detectResult.annotatedImageBase64 || frameBuffer.toString("base64")
+        : undefined;
     return {
       ...camera,
       online: true,
       error: null,
       boxes,
       classCounts,
-      snapshotBase64: detectResult.annotatedImageBase64 || frameBuffer.toString("base64"),
+      ...(imageBase64 !== undefined ? { snapshotBase64: imageBase64 } : {}),
       resolutionCheck,
       ...scoreResult
     };
   } catch (detectError) {
     const resolutionCheck = checkResolution(frameBuffer);
-    await persistCaptureImages(camera.id, frameBuffer, null, resolutionCheck);
+    persistCaptureImagesNonBlocking(camera.id, frameBuffer, null, resolutionCheck);
+    const cumulativeScore = getCumulativeScoreSnapshot(experiment.key, camera.id, experiment);
     return {
       ...camera,
       online: false,
       error: detectError.message,
       boxes: [],
       classCounts: {},
-      stateResults: [],
-      totalScore: 0,
-      maxScore: scoreExperiment(experiment, {}).maxScore,
-      snapshotBase64: frameBuffer.toString("base64"),
+      ...cumulativeScore,
+      snapshotBase64: screenshotEnabled ? frameBuffer.toString("base64") : null,
       resolutionCheck
     };
   }
@@ -589,6 +707,9 @@ app.get("/api/experiments", async (req, res) => {
       msg: "success",
       data: {
         activeExperimentKey,
+        settings: {
+          screenshotEnabled
+        },
         cameras: readCameraConfig(),
         experiments: Object.values(experiments).map(serializeExperiment)
       }
@@ -608,6 +729,27 @@ app.get("/api/cameras", (req, res) => {
     msg: "success",
     data: {
       cameras: readCameraConfig()
+    }
+  });
+});
+
+app.get("/api/settings", (req, res) => {
+  return res.json({
+    code: 0,
+    msg: "success",
+    data: {
+      screenshotEnabled
+    }
+  });
+});
+
+app.post("/api/settings/screenshot", (req, res) => {
+  screenshotEnabled = Boolean(req.body?.enabled);
+  return res.json({
+    code: 0,
+    msg: "success",
+    data: {
+      screenshotEnabled
     }
   });
 });
@@ -657,7 +799,15 @@ app.get("/api/experiments/active", (req, res) => {
 
 app.post("/api/analyze-cameras", async (req, res) => {
   try {
-    const { experimentKey, cameras = [], conf = 0.25, whitelistOnly = false } = req.body || {};
+    const {
+      experimentKey,
+      cameras = [],
+      conf = 0.25,
+      whitelistOnly = false,
+      targetCameraIds = [],
+      lightweightMode = false,
+      imageCameraIds = []
+    } = req.body || {};
     const experiment = getExperiment(experimentKey);
 
     if (!experiment) {
@@ -668,8 +818,12 @@ app.post("/api/analyze-cameras", async (req, res) => {
     }
 
     const normalizedCameras = normalizeCameraList(cameras);
+    const targetSet = new Set(Array.isArray(targetCameraIds) ? targetCameraIds : []);
     const allConfiguredCameras = normalizedCameras.filter((camera) => {
       if (!camera.rtspUrl) {
+        return false;
+      }
+      if (targetSet.size > 0 && !targetSet.has(camera.id)) {
         return false;
       }
       return true;
@@ -690,8 +844,13 @@ app.post("/api/analyze-cameras", async (req, res) => {
     console.log(`[ANALYZE] 并行抓帧开始，摄像头数量: ${candidateCameras.length}, 白名单模式: ${whitelistOnly}`);
     const capturedList = await Promise.all(candidateCameras.map((camera) => captureOneCamera(camera, experiment)));
     console.log("[ANALYZE] 并行识别开始");
+    const imageCameraSet = new Set(Array.isArray(imageCameraIds) ? imageCameraIds : []);
     const analyzedResults = await Promise.all(
-      capturedList.map((captured) => detectOneCamera(captured, experiment, conf))
+      capturedList.map((captured) => {
+        const includeImage =
+          screenshotEnabled && (!lightweightMode || imageCameraSet.has(captured.camera.id));
+        return detectOneCamera(captured, experiment, conf, { includeImage });
+      })
     );
     analyzedResults.forEach((item) => {
       resultMap[item.id] = item;
@@ -764,9 +923,11 @@ app.post("/api/detect", upload.single("image"), async (req, res) => {
       });
     }
 
-    const response = await detectByBuffer(req.file.buffer, experiment, req.body.conf || "0.25");
+    const response = await detectByBuffer(req.file.buffer, experiment, req.body.conf || "0.25", {
+      returnAnnotated: screenshotEnabled
+    });
     const resolutionCheck = checkResolution(req.file.buffer);
-    await persistCaptureImages(
+    persistCaptureImagesNonBlocking(
       "single_detect",
       req.file.buffer,
       response.annotatedImageBase64 || null,

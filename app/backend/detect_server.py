@@ -70,7 +70,8 @@ async def detect(
     image: UploadFile = File(...),
     conf: float = Form(0.25),
     model_path: str = Form(None),
-    class_names: str = Form("[]")
+    class_names: str = Form("[]"),
+    return_annotated: str = Form("1")
 ):
     try:
         resolved_class_names = json.loads(class_names) if class_names else []
@@ -126,16 +127,18 @@ async def detect(
                     "className": class_name
                 })
 
-        try:
-            plotted = result.plot()
-            if plotted is not None:
-                plotted_rgb = plotted[:, :, ::-1]
-                plotted_image = Image.fromarray(plotted_rgb)
-                output_buffer = io.BytesIO()
-                plotted_image.save(output_buffer, format="JPEG", quality=95)
-                annotated_image_base64 = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
-        except Exception:
-            annotated_image_base64 = None
+        should_return_annotated = str(return_annotated).lower() in {"1", "true", "yes"}
+        if should_return_annotated:
+            try:
+                plotted = result.plot()
+                if plotted is not None:
+                    plotted_rgb = plotted[:, :, ::-1]
+                    plotted_image = Image.fromarray(plotted_rgb)
+                    output_buffer = io.BytesIO()
+                    plotted_image.save(output_buffer, format="JPEG", quality=95)
+                    annotated_image_base64 = base64.b64encode(output_buffer.getvalue()).decode("utf-8")
+            except Exception:
+                annotated_image_base64 = None
 
         return {
             "code": 0,

@@ -1,6 +1,6 @@
 {
   "type": "batch_analyze",
-  "timestamp": "2026-04-07T05:20:44.741Z",
+  "timestamp": "2026-04-07T06:26:23.934Z",
   "experiment": {
     "key": "defaultExperiment",
     "displayName": "小灯泡实验",
@@ -22,7 +22,7 @@
     "stateRules": {
       "init": {
         "wire": 3,
-        "switch": 1,
+        "switch｜switchConnected": 1,
         "batteryComp": 1,
         "lightbulb": 1,
         "lightbulbModel": 1
@@ -30,7 +30,7 @@
       "connect": {
         "switchConnected": 1,
         "batteryConnected": 1,
-        "lightbulbConnected": 1
+        "lightbulbConnected|lightbulbOrange": 1
       },
       "finish": {
         "batteryConnected": 1,
@@ -54,9 +54,9 @@
     ]
   },
   "summary": {
-    "totalScore": 0,
+    "totalScore": 30,
     "maxScore": 360,
-    "onlineCount": 0
+    "onlineCount": 1
   },
   "cameras": [
     {
@@ -65,7 +65,7 @@
       "slot": 1,
       "rtspUrl": "rtsp://admin:@192.168.1.10:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -79,7 +79,7 @@
       "slot": 2,
       "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
       "online": false,
-      "error": "单路抓帧超时",
+      "error": "未配置 RTSP 地址",
       "resolutionCheck": null,
       "totalScore": 0,
       "maxScore": 30,
@@ -120,14 +120,43 @@
       "name": "摄像头 5",
       "slot": 5,
       "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
-      "online": false,
-      "error": "未配置 RTSP 地址",
-      "resolutionCheck": null,
-      "totalScore": 0,
+      "online": true,
+      "error": null,
+      "resolutionCheck": {
+        "width": 2880,
+        "height": 1616,
+        "minWidth": 640,
+        "minHeight": 360,
+        "ok": true
+      },
+      "totalScore": 30,
       "maxScore": 30,
-      "completedStates": [],
-      "currentState": null,
-      "stateResults": []
+      "completedStates": [
+        "init",
+        "connect",
+        "finish"
+      ],
+      "currentState": "finish",
+      "stateResults": [
+        {
+          "state": "init",
+          "score": 10,
+          "earnedScore": 10,
+          "passed": true
+        },
+        {
+          "state": "connect",
+          "score": 10,
+          "earnedScore": 10,
+          "passed": true
+        },
+        {
+          "state": "finish",
+          "score": 10,
+          "earnedScore": 10,
+          "passed": true
+        }
+      ]
     },
     {
       "id": "camera-6",
