@@ -1,9 +1,9 @@
 const mode = import.meta.env.MODE;
 
-var API_SERVER = "http://localhost:3000";
+var API_SERVER = "http://localhost:3001";
 
 if (mode === "development") {
-  API_SERVER = "http://localhost:3000";
+  API_SERVER = "http://localhost:3001";
 }
 
 if (mode === "production") {

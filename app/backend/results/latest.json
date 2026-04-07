@@ -1,6 +1,6 @@
 {
   "type": "batch_analyze",
-  "timestamp": "2026-04-01T14:30:29.401Z",
+  "timestamp": "2026-04-07T05:15:11.280Z",
   "experiment": {
     "key": "defaultExperiment",
     "displayName": "小灯泡实验",
@@ -67,8 +67,8 @@
       "online": true,
       "error": null,
       "resolutionCheck": {
-        "width": 2304,
-        "height": 1296,
+        "width": 2880,
+        "height": 1616,
         "minWidth": 640,
         "minHeight": 360,
         "ok": true
@@ -106,8 +106,8 @@
       "online": true,
       "error": null,
       "resolutionCheck": {
-        "width": 2304,
-        "height": 1296,
+        "width": 2880,
+        "height": 1616,
         "minWidth": 640,
         "minHeight": 360,
         "ok": true

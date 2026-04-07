@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RTSP摄像头识别 + YOLO ONNX + 状态判断</title>
+  <link rel="stylesheet" href="index.css" />
+</head>
+
+<body data-experiment-name="defaultExperiment">
+  <div class="page">
+    <div class="left">
+      <h2>RTSP摄像头实时识别</h2>
+      <div class="viewer">
+        <video id="rtspVideo" autoplay muted playsinline style="display:none;"></video>
+        <canvas id="videoCanvas"></canvas>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div class="controls">
+        <button id="btnStartCamera">连接RTSP摄像头</button>
+        <button id="btnStartDetect" disabled>开始实验</button>
+        <button id="btnStopDetect" disabled>停止实验</button>
+        <label>
+          置信度:
+          <input id="confRange" type="range" min="0.1" max="0.9" step="0.05" value="0.25" />
+          <span id="confText">0.25</span>
+        </label>
+      </div>
+      <div id="stateBox" class="status-box state-unknown">当前状态：unknown</div>
+    </div>
+    <div class="right">
+      <div class="panel">
+        <h3>实验信息</h3>
+        <div id="experimentInfo" class="small">等待加载实验配置...</div>
+      </div>
+      <div class="panel">
+        <h3>实验得分</h3>
+        <div id="scoreInfo" class="mono">0 分</div>
+      </div>
+      <div class="panel">
+        <h3>检测计数</h3>
+        <div id="countInfo" class="mono">等待检测...</div>
+      </div>
+      <div class="panel">
+        <h3>运行日志</h3>
+        <div id="log" class="mono">页面已加载</div>
+      </div>
+    </div>
+  </div>
+  <script src="flv.min.js"></script>
+  <script src="index.js"></script>
+</body>
+
+</html>

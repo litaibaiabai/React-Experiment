@@ -13,8 +13,8 @@ const fs = require("fs");
 const app = express();
 
 const HTTP_PORT = Number(process.env.HTTP_PORT || 3001);
-const PYTHON_API = process.env.PYTHON_API || "http://127.0.0.1:3000/detect";
-const PYTHON_LOAD_MODEL_API = process.env.PYTHON_LOAD_MODEL_API || "http://127.0.0.1:3000/load-model";
+const PYTHON_API = process.env.PYTHON_API || "http://127.0.0.1:3008/detect";
+const PYTHON_LOAD_MODEL_API = process.env.PYTHON_LOAD_MODEL_API || "http://127.0.0.1:3008/load-model";
 const EXPERIMENT_DIR = path.join(__dirname, "experiments");
 const CAMERA_CONFIG_PATH = path.join(__dirname, "cameras.json");
 const RESULT_DIR = path.join(__dirname, "results");
@@ -766,7 +766,12 @@ app.post("/api/detect", upload.single("image"), async (req, res) => {
 
     const response = await detectByBuffer(req.file.buffer, experiment, req.body.conf || "0.25");
     const resolutionCheck = checkResolution(req.file.buffer);
-    await persistCaptureImages("single_detect", req.file.buffer, response.annotatedImageBase64 || null, resolutionCheck);
+    await persistCaptureImages(
+      "single_detect",
+      req.file.buffer,
+      response.annotatedImageBase64 || null,
+      resolutionCheck
+    );
     const classCounts = buildClassCounts(response.boxes || []);
     const scoreResult = scoreExperiment(experiment, classCounts);
 

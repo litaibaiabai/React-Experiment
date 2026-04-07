@@ -1,9 +1,9 @@
 {
   "cameraId": "camera-1",
-  "timestamp": "2026-04-01T14:30:29.303Z",
+  "timestamp": "2026-04-07T05:15:11.175Z",
   "resolutionCheck": {
-    "width": 2304,
-    "height": 1296,
+    "width": 2880,
+    "height": 1616,
     "minWidth": 640,
     "minHeight": 360,
     "ok": true
