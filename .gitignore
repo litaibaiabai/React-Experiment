@@ -13,6 +13,8 @@ data/
 label-studio-env/
 datahouse/
 
+app/backend/capture
+
 # misc
 **/.DS_Store
 .DS_Store
