@@ -27,6 +27,45 @@ const createEmptyResultMap = () =>
     return accumulator;
   }, {});
 
+const applySequentialScoring = (camera) => {
+  const sourceStates = Array.isArray(camera?.stateResults) ? camera.stateResults : [];
+  let canEvaluateCurrent = true;
+
+  const stateResults = sourceStates.map((state) => {
+    const passed = Boolean(state?.passed);
+    const score = Number(state?.score) || 0;
+    const earnedScore = Number(state?.earnedScore) || 0;
+
+    if (!canEvaluateCurrent) {
+      return {
+        ...state,
+        passed: false,
+        earnedScore: 0,
+        blockedByPrevious: true
+      };
+    }
+
+    canEvaluateCurrent = passed;
+    return {
+      ...state,
+      passed,
+      score,
+      earnedScore,
+      blockedByPrevious: false
+    };
+  });
+
+  const totalScore = stateResults.reduce((sum, state) => sum + (Number(state?.earnedScore) || 0), 0);
+  const maxScore = stateResults.reduce((sum, state) => sum + (Number(state?.score) || 0), 0);
+
+  return {
+    ...camera,
+    stateResults,
+    totalScore,
+    maxScore: camera?.maxScore || maxScore
+  };
+};
+
 const College = () => {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -116,7 +155,11 @@ const College = () => {
       try {
         const lightweightMode = isRealtime;
         const targetCameraIds = focusedCameraId ? [focusedCameraId] : [];
-        const imageCameraIds = focusedCameraId ? [focusedCameraId] : lightweightMode ? [] : cameras.map((item) => item.id);
+        const imageCameraIds = focusedCameraId
+          ? [focusedCameraId]
+          : lightweightMode
+            ? []
+            : cameras.map((item) => item.id);
         const response = await post("/analyze-cameras", {
           experimentKey,
           cameras,
@@ -133,18 +176,21 @@ const College = () => {
 
         setSelectedExperiment(response?.data?.experiment || selectedExperiment);
         setCameraResultMap((prev) => ({
-          ...Object.keys(nextResultMap).reduce((accumulator, cameraId) => {
-            const previousItem = prev[cameraId] || {};
-            const incomingItem = nextResultMap[cameraId] || {};
-            accumulator[cameraId] = {
-              ...previousItem,
-              ...incomingItem,
-              ...(incomingItem.snapshotBase64 === undefined
-                ? { snapshotBase64: previousItem.snapshotBase64 || null }
-                : {})
-            };
-            return accumulator;
-          }, { ...prev })
+          ...Object.keys(nextResultMap).reduce(
+            (accumulator, cameraId) => {
+              const previousItem = prev[cameraId] || {};
+              const incomingItem = nextResultMap[cameraId] || {};
+              accumulator[cameraId] = {
+                ...previousItem,
+                ...incomingItem,
+                ...(incomingItem.snapshotBase64 === undefined
+                  ? { snapshotBase64: previousItem.snapshotBase64 || null }
+                  : {})
+              };
+              return accumulator;
+            },
+            { ...prev }
+          )
         }));
         setLastUpdateAt(new Date().toLocaleTimeString());
         if (!silent) {
@@ -201,7 +247,7 @@ const College = () => {
     () =>
       cameras.map((camera) => ({
         ...camera,
-        ...(cameraResultMap[camera.id] || {})
+        ...applySequentialScoring(cameraResultMap[camera.id] || {})
       })),
     [cameras, cameraResultMap]
   );
@@ -230,7 +276,7 @@ const College = () => {
       <div className="top-panel">
         <div>
           <Title level={2} className="title">
-            小学科学AI实验识别系统
+            小学科学实验AI测评
           </Title>
         </div>
         <Space wrap>
@@ -302,13 +348,19 @@ const College = () => {
                 <div className="state-list">
                   {(camera.stateResults || []).length ? (
                     camera.stateResults.map((state) => (
-                      <div className={`state-item ${state.passed ? "passed" : "failed"}`} key={state.state}>
+                      <div
+                        className={`state-item ${
+                          state.blockedByPrevious ? "blocked" : state.passed ? "passed" : "failed"
+                        }`}
+                        key={state.state}
+                      >
                         <div className="state-header">
                           <span>{state.state}</span>
                           <span>
                             {state.earnedScore}/{state.score} 分
                           </span>
                         </div>
+                        {state.blockedByPrevious ? <Text type="secondary">等待上一状态完成</Text> : null}
                       </div>
                     ))
                   ) : (

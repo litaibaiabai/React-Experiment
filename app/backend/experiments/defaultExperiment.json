@@ -40,7 +40,7 @@
     "connect": {
       "switchConnected": 1,
       "batteryConnected": 1,
-      "lightbulbConnected|lightbulbOrange": 1
+      "lightbulbConnected": 1
     },
     "finish": {
       "batteryConnected": 1,
