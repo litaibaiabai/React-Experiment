@@ -1,37 +1,48 @@
 {
-  "displayName": "书包实验",
-  "description": "示例配置：切换到 best-bag.pt 模型进行识别与评分。",
+  "displayName": "吹气袋实验",
+  "description": "根据吹气袋、吸管的状态判定实验完成度。",
+  "isDefault": true,
   "modelPath": "./best-bag.pt",
   "classNames": [
-    "bag",
-    "strap",
-    "zipper",
-    "tag"
+    "Testbag",
+    "FoldedTestBag",
+    "Straw",
+    "ConnectedStraw"
   ],
-  "stateRules": {
-    "init": {
-      "bag": 1,
-      "strap": 2
+  "classNamesZn": [
+    "吹气袋",
+    "折叠吹气袋",
+    "吸管",
+    "已连接吸管"
+  ],
+  "stateRules":
+  {
+    "init":
+    {
+      "FoldedTestBag|ConnectedStraw": 1,
+      "Straw": 1
     },
-    "connect": {
-      "zipper": 1
+    "connect":
+    {
+      "ConnectedStraw": 1
     },
-    "finish": {
-      "tag": 1
+    "finish":
+    {
+      "Testbag": 1,
+      "ConnectedStraw": 1
     }
   },
   "scoreRules": [
-    {
-      "state": "init",
-      "score": 10
-    },
-    {
-      "state": "connect",
-      "score": 10
-    },
-    {
-      "state": "finish",
-      "score": 10
-    }
-  ]
+  {
+    "state": "init",
+    "score": 10
+  },
+  {
+    "state": "connect",
+    "score": 10
+  },
+  {
+    "state": "finish",
+    "score": 10
+  }]
 }

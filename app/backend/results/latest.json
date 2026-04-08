@@ -1,6 +1,6 @@
 {
   "type": "batch_analyze",
-  "timestamp": "2026-04-07T06:26:23.934Z",
+  "timestamp": "2026-04-07T09:24:48.561Z",
   "experiment": {
     "key": "defaultExperiment",
     "displayName": "小灯泡实验",
@@ -54,9 +54,9 @@
     ]
   },
   "summary": {
-    "totalScore": 30,
+    "totalScore": 10,
     "maxScore": 360,
-    "onlineCount": 1
+    "onlineCount": 0
   },
   "cameras": [
     {
@@ -79,13 +79,34 @@
       "slot": 2,
       "rtspUrl": "rtsp://admin:@192.168.1.11:554/Streaming/Channels/101",
       "online": false,
-      "error": "未配置 RTSP 地址",
+      "error": "单路抓帧超时",
       "resolutionCheck": null,
-      "totalScore": 0,
+      "totalScore": 10,
       "maxScore": 30,
-      "completedStates": [],
-      "currentState": null,
-      "stateResults": []
+      "completedStates": [
+        "finish"
+      ],
+      "currentState": "init",
+      "stateResults": [
+        {
+          "state": "init",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "connect",
+          "score": 10,
+          "earnedScore": 0,
+          "passed": false
+        },
+        {
+          "state": "finish",
+          "score": 10,
+          "earnedScore": 10,
+          "passed": true
+        }
+      ]
     },
     {
       "id": "camera-3",
@@ -120,43 +141,14 @@
       "name": "摄像头 5",
       "slot": 5,
       "rtspUrl": "rtsp://admin:@192.168.1.14:554/Streaming/Channels/101",
-      "online": true,
-      "error": null,
-      "resolutionCheck": {
-        "width": 2880,
-        "height": 1616,
-        "minWidth": 640,
-        "minHeight": 360,
-        "ok": true
-      },
-      "totalScore": 30,
+      "online": false,
+      "error": "未配置 RTSP 地址",
+      "resolutionCheck": null,
+      "totalScore": 0,
       "maxScore": 30,
-      "completedStates": [
-        "init",
-        "connect",
-        "finish"
-      ],
-      "currentState": "finish",
-      "stateResults": [
-        {
-          "state": "init",
-          "score": 10,
-          "earnedScore": 10,
-          "passed": true
-        },
-        {
-          "state": "connect",
-          "score": 10,
-          "earnedScore": 10,
-          "passed": true
-        },
-        {
-          "state": "finish",
-          "score": 10,
-          "earnedScore": 10,
-          "passed": true
-        }
-      ]
+      "completedStates": [],
+      "currentState": null,
+      "stateResults": []
     },
     {
       "id": "camera-6",

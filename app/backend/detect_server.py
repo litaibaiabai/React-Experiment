@@ -68,7 +68,7 @@ async def switch_model(payload: dict):
 @app.post("/detect")
 async def detect(
     image: UploadFile = File(...),
-    conf: float = Form(0.25),
+    conf: float = Form(0.65),
     model_path: str = Form(None),
     class_names: str = Form("[]"),
     return_annotated: str = Form("1")

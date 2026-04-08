@@ -1,0 +1,38 @@
+{
+  "displayName": "斜坡模型",
+  "description": "示例配置：切换到 best-po.pt 模型进行识别与评分。",
+  "modelPath": "./best-po.pt",
+  "classNames": ["sphere", "cube", "prism", "cuboid"],
+  "stateRules": {
+    "sphere": {
+      "sphere": 1
+    },
+    "cube": {
+      "cube": 1
+    },
+    "prism": {
+      "prism": 1
+    },
+    "cuboid": {
+      "cuboid": 1
+    }
+  },
+  "scoreRules": [
+    {
+      "state": "sphere",
+      "score": 10
+    },
+    {
+      "state": "cube",
+      "score": 10
+    },
+    {
+      "state": "prism",
+      "score": 10
+    },
+    {
+      "state": "cuboid",
+      "score": 10
+    }
+  ]
+}

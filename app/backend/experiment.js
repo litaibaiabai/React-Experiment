@@ -164,11 +164,10 @@ function scoreExperiment(experiment, classCounts = {}) {
         className: name,
         actual: classCounts[name] || 0
       }));
-      const bestMatched =
-        actualList.reduce((best, current) => (current.actual > best.actual ? current : best), {
-          className: alternatives[0] || classKey,
-          actual: 0
-        }) || { className: classKey, actual: 0 };
+      const bestMatched = actualList.reduce((best, current) => (current.actual > best.actual ? current : best), {
+        className: alternatives[0] || classKey,
+        actual: 0
+      }) || { className: classKey, actual: 0 };
       const passed = actualList.some((item) => item.actual >= required);
 
       return {
@@ -588,9 +587,7 @@ async function analyzeOneCamera(camera, experiment, conf) {
     error: null,
     boxes,
     classCounts,
-    snapshotBase64: screenshotEnabled
-      ? detectResult.annotatedImageBase64 || frameBuffer.toString("base64")
-      : null,
+    snapshotBase64: screenshotEnabled ? detectResult.annotatedImageBase64 || frameBuffer.toString("base64") : null,
     resolutionCheck,
     ...scoreResult
   };
@@ -847,8 +844,7 @@ app.post("/api/analyze-cameras", async (req, res) => {
     const imageCameraSet = new Set(Array.isArray(imageCameraIds) ? imageCameraIds : []);
     const analyzedResults = await Promise.all(
       capturedList.map((captured) => {
-        const includeImage =
-          screenshotEnabled && (!lightweightMode || imageCameraSet.has(captured.camera.id));
+        const includeImage = screenshotEnabled && (!lightweightMode || imageCameraSet.has(captured.camera.id));
         return detectOneCamera(captured, experiment, conf, { includeImage });
       })
     );
