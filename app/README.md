@@ -1,470 +1,401 @@
-# ExpGrade - 小学科学 AI 实验识别系统
+# ExpGrade - 小学科学实验 AI 测评系统
 
-[![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-7-purple.svg)](https://vitejs.dev/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
-[![YOLO](https://img.shields.io/badge/YOLO-Ultralytics-orange.svg)](https://ultralytics.com/)
+## 1. 系统整体定位
 
-基于 YOLO 目标检测的小学科学实验自动评分系统，支持多路摄像头实时识别实验器材状态并自动评分。
+ExpGrade 是一套面向小学科学实验教学的 **AI 智能测评系统**。系统通过 RTSP 摄像头实时采集学生实验操作画面，利用 YOLO 深度学习模型进行目标检测，自动识别实验器材及其状态，并根据预设的评分规则对实验完成度进行实时评分。
 
-## 项目概述
+### 核心价值
 
-ExpGrade 是一个智能化的实验评分系统，专为小学科学课堂设计。系统通过 RTSP 摄像头实时捕获学生实验操作画面，利用 YOLO 深度学习模型识别实验器材及其状态，根据预设的评分规则自动判定实验完成度和得分。
+- **自动化评分**：替代人工观察，实现实验操作的自动评分
+- **实时反馈**：支持多路摄像头并行识别，提供实时实验进度反馈
+- **灵活配置**：支持多种实验类型，通过配置文件即可扩展新实验
+- **可视化展示**：直观展示各摄像头的识别结果和评分状态
 
-### 核心功能
+---
 
-- **多路视频监控**: 支持同时接入 12 路 RTSP 摄像头
-- **实时目标检测**: 基于 YOLO 模型的实验器材识别（50ms 刷新间隔）
-- **智能评分系统**: 根据器材连接状态自动判定实验完成度
-- **实验配置管理**: 支持多种实验类型，可灵活配置评分规则
-- **模型热切换**: 运行时动态加载不同 YOLO 模型，无需重启服务
-- **可视化界面**: 直观展示各摄像头识别结果和评分状态
-- **白名单模式**: 支持仅分析指定摄像头
+## 2. 核心功能需求
 
-## 技术栈
+### 2.1 前端功能
 
-### 前端
+前端基于 **React 18 + Vite + Ant Design** 构建，提供以下核心功能：
 
-| 技术         | 版本   | 用途         |
-| ------------ | ------ | ------------ |
-| React        | 18     | UI 框架      |
-| Vite         | 7      | 构建工具     |
-| Ant Design   | 5.x    | UI 组件库    |
-| Jotai        | 2.x    | 状态管理     |
-| React Router | 7.x    | 路由管理     |
-| Less         | 4.x    | CSS 预处理器 |
-| Axios        | 1.x    | HTTP 客户端  |
-| MQTT         | 5.x    | 消息订阅     |
-| jsPDF        | 3.x    | PDF 生成     |
-| XLSX         | 0.18.x | Excel 处理   |
+#### 主要功能模块
 
-### 后端
+| 功能模块       | 描述                                                       |
+| -------------- | ---------------------------------------------------------- |
+| **实验选择**   | 支持切换不同实验类型（小灯泡实验、吹气袋实验、斜坡模型等） |
+| **摄像头管理** | 展示 12 路摄像头画面，支持放大/恢复视图                    |
+| **实时识别**   | 单次识别或连续实时识别模式                                 |
+| **评分展示**   | 显示各状态得分、总分、完成进度                             |
+| **白名单过滤** | 支持仅对白名单摄像头进行识别                               |
 
-| 技术      | 版本 | 用途       |
-| --------- | ---- | ---------- |
-| Node.js   | -    | 运行环境   |
-| Express   | 5.x  | Web 框架   |
-| WebSocket | 8.x  | 实时通信   |
-| FFmpeg    | -    | 视频流处理 |
-| Multer    | 2.x  | 文件上传   |
-| CORS      | 2.x  | 跨域支持   |
-
-### AI 服务
-
-| 技术        | 版本 | 用途         |
-| ----------- | ---- | ------------ |
-| Python      | 3.x  | 运行环境     |
-| FastAPI     | -    | API 框架     |
-| Ultralytics | -    | YOLO 模型库  |
-| PyTorch     | -    | 深度学习框架 |
-| Pillow      | -    | 图像处理     |
-| Uvicorn     | -    | ASGI 服务器  |
-
-## 系统架构
+#### 技术栈
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        前端 (React + Vite)                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ 实验选择器    │  │ 摄像头面板    │  │    评分结果展示           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTP/WebSocket
-┌───────────────────────────────▼─────────────────────────────────┐
-│                    后端服务 (Node.js + Express)                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ 实验配置管理 │  │ 摄像头管理  │  │    评分逻辑处理         │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ RTSP 视频流 │  │ FFmpeg 转码 │  │    WebSocket 推送       │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTP API
-┌───────────────────────────────▼─────────────────────────────────┐
-│                   AI 检测服务 (Python + FastAPI)                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ YOLO 模型   │  │ 目标检测    │  │    模型热切换           │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+- React 18           # 前端框架
+- Vite 7             # 构建工具
+- Ant Design 5       # UI 组件库
+- Jotai              # 状态管理
+- Axios              # HTTP 请求
+- jsPDF              # PDF 导出
+- xlsx               Excel 数据处理
+- MQTT               # 消息订阅（预留）
 ```
 
-## 项目结构
+#### 核心组件
+
+- [`frontend/src/app/index/index.jsx`](frontend/src/app/index/index.jsx) - 主页面组件，包含摄像头网格展示、实验选择、识别控制
+- [`frontend/src/component/Nav/index.jsx`](frontend/src/component/Nav/index.jsx) - 导航栏组件
+- [`frontend/src/util/request.js`](frontend/src/util/request.js) - 封装的 HTTP 请求工具
+- [`frontend/src/constant/apis.js`](frontend/src/constant/apis.js) - API 服务地址配置
+
+---
+
+### 2.2 后端服务器功能
+
+后端基于 **Node.js + Express 5** 构建，提供以下核心功能：
+
+#### 主要功能模块
+
+| API 接口                  | 方法 | 描述                             |
+| ------------------------- | ---- | -------------------------------- |
+| `/api/experiments`        | GET  | 获取所有实验配置和摄像头列表     |
+| `/api/experiments/select` | POST | 切换当前激活的实验模型           |
+| `/api/analyze-cameras`    | POST | 批量分析摄像头画面并返回识别结果 |
+| `/api/cameras`            | GET  | 获取摄像头配置列表               |
+| `/api/settings`           | GET  | 获取系统设置                     |
+
+#### 技术栈
+
+```
+- Express 5          # Web 框架
+- WebSocket (ws)     # 实时通信（预留）
+- Multer             # 文件上传处理
+- Fluent-FFmpeg      # RTSP 流截图
+- Axios              # HTTP 客户端（调用 Python AI 服务）
+- CORS               # 跨域支持
+```
+
+#### 核心处理流程
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   RTSP 摄像头    │───▶│  FFmpeg 截帧     │───▶│  Python AI 服务 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                        │
+                                                        ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   前端展示结果   │◀───│  评分规则引擎     │◀───│  YOLO 目标检测  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+#### 核心文件
+
+- [`backend/experiment.js`](backend/experiment.js) - 主服务文件，包含：
+  - 实验配置读取与管理
+  - RTSP 流截图处理
+  - 评分规则引擎
+  - 累计分数记忆
+  - 结果持久化
+
+- [`backend/cameras.json`](backend/cameras.json) - 摄像头配置文件
+- [`backend/experiments/`](backend/experiments/) - 实验配置目录
+
+---
+
+### 2.3 AI 模型调用
+
+AI 服务基于 **Python + FastAPI + Ultralytics YOLO** 构建，提供目标检测能力。
+
+#### 技术栈
+
+```
+- FastAPI            # 高性能 Web 框架
+- Uvicorn            # ASGI 服务器
+- Ultralytics YOLO   # 目标检测模型
+- Pillow (PIL)       # 图像处理
+```
+
+#### API 接口
+
+| 接口          | 方法 | 描述                               |
+| ------------- | ---- | ---------------------------------- |
+| `/health`     | GET  | 健康检查，返回当前加载的模型       |
+| `/load-model` | POST | 动态加载/切换 YOLO 模型            |
+| `/detect`     | POST | 执行目标检测，返回检测框和标注图像 |
+
+#### 检测参数
+
+```python
+# detect 接口参数
+image: UploadFile     # 待检测图像
+conf: float = 0.65    # 置信度阈值
+model_path: str       # 模型路径（可选，动态切换）
+class_names: str      # 类别名称 JSON 数组
+return_annotated: str # 是否返回标注图像
+```
+
+#### 预置模型
+
+| 模型文件      | 实验类型   | 识别类别                                             |
+| ------------- | ---------- | ---------------------------------------------------- |
+| `best-el.pt`  | 小灯泡实验 | wire, battery, switch, lightbulb, lightbulbOrange 等 |
+| `best-bag.pt` | 吹气袋实验 | Testbag, FoldedTestBag, Straw, ConnectedStraw        |
+| `best-po.pt`  | 斜坡模型   | sphere, cube, prism, cuboid                          |
+
+#### 核心文件
+
+- [`backend/detect_server.py`](backend/detect_server.py) - Python AI 检测服务
+
+---
+
+## 3. 项目架构
 
 ```
 app/
-├── backend/                      # 后端服务
-│   ├── detect_server.py          # Python AI 检测服务 (Port 3000)
-│   ├── experiment.js             # Node.js 主服务 (Port 3001)
-│   ├── package.json              # Node.js 依赖配置
-│   ├── cameras.json              # 摄像头配置
-│   ├── best-el.pt                # YOLO 模型文件 (小灯泡实验)
-│   ├── best-bag.pt               # YOLO 模型文件 (书包实验)
-│   ├── experiments/              # 实验配置目录
-│   │   ├── defaultExperiment.json    # 默认实验配置 (小灯泡实验)
-│   │   └── bagExperiment.json        # 其他实验配置 (书包实验)
-│   ├── capture/                  # 截图保存目录
-│   │   ├── camera-X_raw.jpg      # 原始截图
-│   │   ├── camera-X_annotated.jpg # 标注截图
-│   │   └── camera-X_meta.json    # 元数据
-│   └── public/                   # 静态资源
-│       ├── config.json           # 前端配置
-│       ├── index.html            # 管理页面
-│       ├── index.css             # 样式文件
-│       ├── index.js              # 前端逻辑
-│       └── flv.min.js            # FLV 播放器
+├── frontend/                    # 前端项目
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── index/          # 主页面
+│   │   │   └── store/          # 状态管理
+│   │   ├── component/          # 公共组件
+│   │   ├── constant/           # 常量配置
+│   │   ├── img/                # 图片资源
+│   │   └── util/               # 工具函数
+│   ├── public/                 # 静态资源
+│   ├── package.json
+│   └── vite.config.js
 │
-└── frontend/                     # 前端应用
-    ├── src/
-    │   ├── App.jsx               # 应用入口
-    │   ├── main.jsx              # React 入口
-    │   ├── index.less            # 全局样式
-    │   ├── var.less              # 样式变量
-    │   ├── app/
-    │   │   ├── index/            # 主页面
-    │   │   │   ├── index.jsx     # 页面组件 (12 路摄像头监控)
-    │   │   │   └── index.less    # 样式文件
-    │   │   └── store/            # 状态管理
-    │   │       └── auth.js       # 认证状态
-    │   ├── component/            # 公共组件
-    │   │   └── Nav/              # 导航组件
-    │   ├── constant/             # 常量定义
-    │   │   ├── apis.js           # API 地址配置
-    │   │   ├── data.js           # 静态数据
-    │   │   └── urls.js           # URL 配置
-    │   ├── img/                  # 图片资源
-    │   └── util/                 # 工具函数
-    │       ├── fn.js             # 通用函数
-    │       ├── request.js        # HTTP 请求封装
-    │       └── token.js          # Token 管理
-    ├── public/                   # 静态资源
-    │   ├── ans.svg               # 答案图标
-    │   ├── city.json             # 城市数据
-    │   ├── major.json            # 专业数据
-    │   └── font/                 # 字体文件
-    ├── vite.config.js            # Vite 配置
-    ├── eslint.config.js          # ESLint 配置
-    └── package.json              # 依赖配置
+├── backend/                     # 后端项目
+│   ├── experiments/            # 实验配置目录
+│   │   ├── defaultExperiment.json  # 小灯泡实验
+│   │   ├── bagExperiment.json      # 吹气袋实验
+│   │   └── poExperiment.json       # 斜坡模型实验
+│   ├── capture/                # 截图保存目录
+│   ├── results/                # 识别结果存储
+│   ├── public/                 # 静态文件（构建产物）
+│   ├── detect_server.py        # Python AI 服务
+│   ├── experiment.js           # Node.js 主服务
+│   ├── cameras.json            # 摄像头配置
+│   ├── best-*.pt               # YOLO 模型文件
+│   └── package.json
+│
+└── README.md
 ```
 
-## 快速开始
+---
+
+## 4. 实验配置说明
+
+### 配置文件结构
+
+```json
+{
+  "displayName": "实验名称",
+  "description": "实验描述",
+  "isDefault": true,
+  "modelPath": "./best-el.pt",
+  "classNames": ["class1", "class2"],
+  "classNamesZn": ["类别1", "类别2"],
+  "stateRules": {
+    "state1": { "class1": 1, "class2": 2 },
+    "state2": { "class3": 1 }
+  },
+  "scoreRules": [
+    { "state": "state1", "score": 10 },
+    { "state": "state2", "score": 10 }
+  ]
+}
+```
+
+### 字段说明
+
+| 字段           | 类型     | 描述                                   |
+| -------------- | -------- | -------------------------------------- |
+| `displayName`  | string   | 实验显示名称                           |
+| `modelPath`    | string   | YOLO 模型文件路径                      |
+| `classNames`   | string[] | 模型识别的类别名称（英文）             |
+| `classNamesZn` | string[] | 类别中文名称（用于展示）               |
+| `stateRules`   | object   | 状态判定规则，定义各状态需要的器材数量 |
+| `scoreRules`   | array    | 评分规则，定义各状态的分数             |
+
+### 状态规则示例
+
+```json
+// 小灯泡实验状态规则
+"stateRules": {
+  "init": {
+    "wire": 3,                      // 需要 3 根电线
+    "switch｜switchConnected": 1,   // 需要 1 个开关（支持别名）
+    "batteryComp": 1,
+    "lightbulb": 1
+  },
+  "connect": {
+    "switchConnected": 1,
+    "batteryConnected": 1,
+    "lightbulbConnected": 1
+  },
+  "finish": {
+    "batteryConnected": 1,
+    "lightbulbOrange": 1,           // 灯泡点亮
+    "switchClosed": 1               // 开关闭合
+  }
+}
+```
+
+---
+
+## 5. 快速开始
 
 ### 环境要求
 
 - Node.js >= 18
 - Python >= 3.8
-- FFmpeg (需添加到系统 PATH 或配置 `FFMPEG_PATH` 环境变量)
+- FFmpeg（用于 RTSP 流处理）
 
-### 安装步骤
+### 安装依赖
 
-1. **克隆项目**
+```bash
+# 安装前端依赖
+cd frontend
+npm install
 
-   ```bash
-   git clone <repository-url>
-   cd ExpGrade/app
-   ```
+# 安装后端依赖
+cd ../backend
+npm install
 
-2. **安装后端依赖**
+# 安装 Python 依赖
+pip install fastapi uvicorn ultralytics pillow
+```
 
-   ```bash
-   cd backend
-   npm install
-   pip install fastapi uvicorn ultralytics pillow
-   ```
+### 启动服务
 
-3. **安装前端依赖**
+```bash
+# 1. 启动 Python AI 服务（端口 3008）
+cd backend
+python detect_server.py
 
-   ```bash
-   cd ../frontend
-   npm install
-   ```
+# 2. 启动 Node.js 后端服务（端口 3001）
+npm start
 
-4. **配置摄像头**
+# 3. 启动前端开发服务器（端口 5173）
+cd ../frontend
+npm run dev
+```
 
-   编辑 [`backend/cameras.json`](backend/cameras.json)，配置 RTSP 摄像头地址：
+### 环境变量配置
 
-   ```json
-   {
-     "cameras": [
-       {
-         "id": "camera-1",
-         "name": "摄像头 1",
-         "rtspUrl": "rtsp://admin:password@192.168.1.10:554/Streaming/Channels/101",
-         "slot": 1,
-         "whitelist": true
-       }
-     ]
-   }
-   ```
+```bash
+# backend/.env
+HTTP_PORT=3001
+PYTHON_API=http://127.0.0.1:3008/detect
+PYTHON_LOAD_MODEL_API=http://127.0.0.1:3008/load-model
+FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
+SCREENSHOT_ENABLED=1
+MIN_CAPTURE_WIDTH=640
+MIN_CAPTURE_HEIGHT=360
+```
 
-5. **启动服务**
+---
 
-   **终端 1** - 启动 AI 检测服务：
+## 6. 评分机制
 
-   ```bash
-   cd backend
-   python detect_server.py
-   # 服务运行在 http://localhost:3000
-   ```
+### 累计评分
 
-   **终端 2** - 启动后端服务：
+系统采用 **累计评分** 机制，即一旦某个状态达成，其分数将被保留，直到实验重置。
 
-   ```bash
-   cd backend
-   npm start
-   # 服务运行在 http://localhost:3001
-   ```
+```javascript
+// 评分流程
+const scoreResult = applyCumulativeScore(experimentKey, cameraId, experiment, scoreExperiment(experiment, classCounts));
+```
 
-   **终端 3** - 启动前端开发服务器：
+### 顺序评分
 
-   ```bash
-   cd frontend
-   npm run dev
-   # 服务运行在 http://localhost:5173
-   ```
+前端支持 **顺序评分** 模式，即必须按顺序完成各状态：
 
-6. **访问应用**
+```javascript
+// 前端顺序评分逻辑
+const applySequentialScoring = (camera) => {
+  let canEvaluateCurrent = true;
+  const stateResults = sourceStates.map((state) => {
+    if (!canEvaluateCurrent) {
+      return { ...state, passed: false, blockedByPrevious: true };
+    }
+    canEvaluateCurrent = state.passed;
+    return state;
+  });
+  return { ...camera, stateResults };
+};
+```
 
-   打开浏览器访问 `http://localhost:5173`
+---
 
-## 实验配置说明
+## 7. 摄像头配置
 
-### 实验配置文件结构
-
-实验配置存放在 [`backend/experiments/`](backend/experiments/) 目录，每个 JSON 文件对应一个实验：
+### 配置文件格式
 
 ```json
 {
-  "displayName": "小灯泡实验",
-  "description": "根据器材连接状态判定实验完成度",
-  "isDefault": true,
-  "modelPath": "./best-el.pt",
-  "classNames": ["wire", "battery", "switch", "lightbulb", ...],
-  "stateRules": {
-    "init": { "wire": 3, "switch": 1, ... },
-    "connect": { "switchConnected": 1, ... },
-    "finish": { "lightbulbOrange": 1, ... }
-  },
-  "scoreRules": [
-    { "state": "init", "score": 10 },
-    { "state": "connect", "score": 10 },
-    { "state": "finish", "score": 10 }
+  "cameras": [
+    {
+      "id": "camera-1",
+      "name": "摄像头 1",
+      "rtspUrl": "rtsp://admin:password@192.168.1.10:554/Streaming/Channels/101",
+      "slot": 1,
+      "whitelist": true
+    }
   ]
 }
 ```
 
-### 配置字段说明
+### 字段说明
 
-| 字段          | 类型     | 说明               |
-| ------------- | -------- | ------------------ |
-| `displayName` | string   | 实验显示名称       |
-| `description` | string   | 实验描述           |
-| `isDefault`   | boolean  | 是否为默认实验     |
-| `modelPath`   | string   | YOLO 模型文件路径  |
-| `classNames`  | string[] | 可识别的器材类别   |
-| `stateRules`  | object   | 各状态所需器材数量 |
-| `scoreRules`  | array    | 各状态对应分数     |
+| 字段        | 类型    | 描述             |
+| ----------- | ------- | ---------------- |
+| `id`        | string  | 摄像头唯一标识   |
+| `name`      | string  | 显示名称         |
+| `rtspUrl`   | string  | RTSP 流地址      |
+| `slot`      | number  | 位置槽位（1-12） |
+| `whitelist` | boolean | 是否在白名单中   |
 
-### 评分逻辑
+---
 
-系统根据 `stateRules` 定义的状态序列，依次检查每个状态所需的器材是否满足数量要求：
-
-1. **init 状态**: 检查初始器材是否齐全（如：3 根导线、1 个开关、1 个电池盒等）
-2. **connect 状态**: 检查器材是否正确连接（如：开关已连接、电池已连接、灯泡已连接）
-3. **finish 状态**: 检查实验是否完成（如：灯泡点亮、开关闭合）
-
-每个状态通过后获得对应分数，总分自动累计。
-
-### 内置实验示例
-
-#### 小灯泡实验 ([`defaultExperiment.json`](backend/experiments/defaultExperiment.json))
-
-- **模型**: `best-el.pt`
-- **识别类别**: wire, battery, switch, batteryComp, lightbulb, lightbulbModel, switchConnected, batteryConnected, lightbulbConnected, lightbulbOrange, switchClosed
-- **评分规则**:
-  - init (10 分): 检查基础器材齐全
-  - connect (10 分): 检查电路连接正确
-  - finish (10 分): 检查灯泡点亮
-
-#### 书包实验 ([`bagExperiment.json`](backend/experiments/bagExperiment.json))
-
-- **模型**: `best-bag.pt`
-- **识别类别**: bag, strap, zipper, tag
-- **评分规则**:
-  - init (10 分): 检查书包和背带
-  - connect (10 分): 检查拉链
-  - finish (10 分): 检查标签
-
-## API 接口
-
-### 后端服务 (Node.js - Port 3001)
-
-| 方法 | 路径                  | 说明                     | 请求体                                      |
-| ---- | --------------------- | ------------------------ | ------------------------------------------- |
-| GET  | `/experiments`        | 获取实验列表和摄像头配置 | -                                           |
-| POST | `/experiments/select` | 切换当前实验             | `{ experimentKey: string }`                 |
-| POST | `/analyze-cameras`    | 分析所有摄像头画面       | `{ experimentKey, cameras, whitelistOnly }` |
-| POST | `/upload-image`       | 上传图片进行检测         | `multipart/form-data` (image 文件)          |
-| GET  | `/results/latest`     | 获取最新检测结果         | -                                           |
-| GET  | `/results/history`    | 获取检测历史记录         | -                                           |
-
-### AI 检测服务 (Python - Port 3000)
-
-| 方法 | 路径          | 说明         | 请求体/参数                                                  |
-| ---- | ------------- | ------------ | ------------------------------------------------------------ |
-| GET  | `/health`     | 健康检查     | -                                                            |
-| POST | `/load-model` | 加载指定模型 | `{ model_path: string, class_names: string[] }`              |
-| POST | `/detect`     | 执行目标检测 | `image` (文件), `conf` (置信度), `model_path`, `class_names` |
-
-## 开发指南
+## 8. 开发指南
 
 ### 前端开发
 
 ```bash
 cd frontend
-
-# 启动开发服务器
-npm run dev
-
-# 构建生产版本
-npm run build
-
-# 预览生产版本
-npm run preview
-
-# 代码检查
-npm run lint
+npm run dev      # 开发模式
+npm run build    # 生产构建
+npm run preview  # 预览构建结果
 ```
 
 ### 后端开发
 
 ```bash
 cd backend
-
-# 启动 Node.js 服务
-npm start
-
-# 启动 Python 检测服务
-python detect_server.py
+npm start        # 启动服务
 ```
 
-### 环境变量
+### 添加新实验
 
-后端服务支持以下环境变量：
+1. 训练 YOLO 模型，生成 `.pt` 文件
+2. 在 `backend/experiments/` 目录创建配置文件
+3. 重启后端服务，前端即可选择新实验
 
-| 变量名                  | 默认值                           | 说明                  |
-| ----------------------- | -------------------------------- | --------------------- |
-| `HTTP_PORT`             | 3001                             | Node.js 服务端口      |
-| `PYTHON_API`            | http://127.0.0.1:3000/detect     | Python 检测 API       |
-| `PYTHON_LOAD_MODEL_API` | http://127.0.0.1:3000/load-model | 模型加载 API          |
-| `FFMPEG_PATH`           | /opt/homebrew/bin/ffmpeg         | FFmpeg 可执行文件路径 |
-| `MODEL_PATH`            | best-el.pt                       | 默认模型文件          |
-| `MIN_CAPTURE_WIDTH`     | 640                              | 截图最小宽度          |
-| `MIN_CAPTURE_HEIGHT`    | 360                              | 截图最小高度          |
+---
 
-前端环境变量 ([`.env`](frontend/.env)):
+## 9. 技术亮点
 
-| 变量名            | 开发环境              | 生产环境                 |
-| ----------------- | --------------------- | ------------------------ |
-| `VITE_API_SERVER` | http://localhost:8888 | http://8.136.110.55:8888 |
+1. **多路并行处理**：支持 12 路摄像头并行抓帧和识别
+2. **动态模型切换**：无需重启服务即可切换不同实验模型
+3. **累计评分记忆**：跨帧保持评分状态，避免瞬时识别波动
+4. **轻量传输模式**：实时模式下可选择不传输图像，减少带宽占用
+5. **RTSP 容错机制**：支持 TCP/UDP 双策略自动切换
 
-## 技术亮点
+---
 
-1. **模型热切换**: 支持运行时动态加载不同的 YOLO 模型，通过模型缓存机制避免重复加载开销
-2. **多路视频处理**: 使用 FFmpeg 高效处理多路 RTSP 视频流，支持截图和标注
-3. **实时识别模式**: 50ms 间隔连续刷新，实时反馈实验状态
-4. **灵活配置**: JSON 配置文件支持快速添加新实验类型，无需修改代码
-5. **模型缓存**: 已加载模型自动缓存到 `MODEL_CACHE`，切换实验时无缝衔接
-6. **白名单过滤**: 支持仅分析指定摄像头，提高检测效率
-7. **摄像头聚焦**: 支持单摄像头放大查看，便于细节观察
+## 10. 许可证
 
-## 核心代码逻辑
-
-### 评分流程 ([`experiment.js`](backend/experiment.js:145))
-
-```javascript
-function scoreExperiment(experiment, classCounts = {}) {
-  const stateRules = experiment?.stateRules || {};
-  const scoreRules = experiment?.scoreRules || [];
-
-  // 遍历每个评分规则，检查对应状态是否满足
-  const stateResults = scoreRules.map((rule) => {
-    const requirements = Object.entries(stateRules[rule.state] || {}).map(([className, required]) => {
-      const actual = classCounts[className] || 0;
-      return {
-        className,
-        required,
-        actual,
-        passed: actual >= required
-      };
-    });
-
-    const passed = requirements.every((req) => req.passed);
-    return {
-      state: rule.state,
-      score: rule.score,
-      earnedScore: passed ? rule.score : 0,
-      passed,
-      requirements
-    };
-  });
-
-  const totalScore = stateResults.reduce((sum, r) => sum + r.earnedScore, 0);
-  const maxScore = stateResults.reduce((sum, r) => sum + r.score, 0);
-
-  return { stateResults, totalScore, maxScore };
-}
-```
-
-### 检测流程 ([`detect_server.py`](backend/detect_server.py:68))
-
-```python
-@app.post("/detect")
-async def detect(
-    image: UploadFile = File(...),
-    conf: float = Form(0.25),
-    model_path: str = Form(None),
-    class_names: str = Form("[]")
-):
-    # 1. 加载或切换模型
-    # 2. 使用 YOLO 模型进行目标检测
-    # 3. 解析检测结果 (边界框、类别、置信度)
-    # 4. 生成标注图像 (Base64 编码)
-    # 5. 返回检测结果
-```
-
-### 实时识别模式 ([`index.jsx`](frontend/src/app/index/index.jsx:162))
-
-```javascript
-useEffect(() => {
-  if (!isRealtime || !experimentKey) {
-    return;
-  }
-
-  let stopped = false;
-  const loop = async () => {
-    while (!stopped) {
-      await handleAnalyzeAll({ silent: true });
-      if (stopped) break;
-      await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms 间隔
-    }
-  };
-  loop();
-
-  return () => {
-    stopped = true;
-  };
-}, [isRealtime, experimentKey, handleAnalyzeAll]);
-```
-
-## 许可证
-
-本项目仅供教育和研究目的使用。
-
-## 贡献指南
-
-欢迎提交 Issue 和 Pull Request。在提交代码前，请确保：
-
-1. 代码通过 ESLint 检查
-2. 新功能有相应的测试覆盖
-3. 遵循现有的代码风格和命名规范
-4. 更新相关文档说明
+本项目仅供教育和研究使用。
