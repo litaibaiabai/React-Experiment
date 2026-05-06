@@ -1,13 +1,16 @@
+// 深拷贝辅助函数，用于隔离可变对象。
 export function clone(e) {
   return JSON.parse(JSON.stringify(e));
 }
 
+// 把日期和时间压平成一个便于比较的数字串。
 export const formatDt = (d, t) => {
   d = d.replaceAll("-", "");
   t = t.replaceAll(":", "");
   return parseInt(`${d}${t}`);
 };
 
+// 把压缩后的时间戳还原成人类可读格式。
 export const decodeDt = (d) => {
   let date = d.toString();
   date = date.length > 12 ? date.substr(0, 12) : date;
@@ -15,6 +18,7 @@ export const decodeDt = (d) => {
   return date;
 };
 
+// 取数组最大值，空数组时返回 null。
 export const max = (arr) => {
   if (arr.length === 0) {
     return null;
@@ -22,14 +26,17 @@ export const max = (arr) => {
   return Math.max(...arr);
 };
 
+// 判断值是否为空。
 export const isN = (e) => {
   return e === null || e === "" || e === undefined ? true : false;
 };
 
+// 根据视口宽度判断是否处于移动端布局。
 export const isMobile = () => {
   return document.querySelector("html").clientWidth < 1000;
 };
 
+// 将输入格式化为指定精度的数字。
 export const fix = (str, acc = 1) => {
   const num = parseFloat(str);
   if (isNaN(num)) {
@@ -39,6 +46,7 @@ export const fix = (str, acc = 1) => {
   return ret;
 };
 
+// 统一的提示消息封装。
 export const msg = (info) => {
   notification.info({
     message: "提示",
@@ -53,12 +61,14 @@ export const msg = (info) => {
 };
 
 // ======= 配置常量 =======
-const MAX_ASPECT_RATIO = 2; // 最大允许长宽比
-const BOUNDARY_RANGE = 0.1; // 边界过滤范围 10%
-const MAX_AREA_RATIO = 0.9; // 最大允许面积比例
-const MIN_AREA_RATIO = 0.1; // 最小允许面积比例
+// 过滤检测框时使用的阈值常量。
+const MAX_ASPECT_RATIO = 2;
+const BOUNDARY_RANGE = 0.1;
+const MAX_AREA_RATIO = 0.9;
+const MIN_AREA_RATIO = 0.1;
 
 // ======= 配置开关 =======
+// 默认过滤策略：边界、面积和长宽比过滤开启，去重叠关闭。
 const FILTER_CONFIG = {
   removeOverlap: false,
   boundaryFilter: true,
@@ -66,6 +76,7 @@ const FILTER_CONFIG = {
   aspectRatioFilter: true
 };
 
+// 对 YOLO 检测结果做二次清洗，剔除明显异常框。
 export const filterYoloObjects = (objects, config = FILTER_CONFIG) => {
   if (!objects || objects.length === 0) return [];
 
@@ -160,14 +171,14 @@ export const filterYoloObjects = (objects, config = FILTER_CONFIG) => {
   return result;
 };
 
-/** 计算单个标注的面积 */
+// 计算单个标注的面积。
 export const calcRectArea = (rect) => {
   const width = rect.x2 - rect.x1;
   const height = rect.y2 - rect.y1;
   return width * height;
 };
 
-/** 计算两个矩形的重叠面积 */
+// 计算两个矩形的重叠面积。
 export const calcOverlapArea = (a, b) => {
   // 重叠区域的左边界：取两个矩形左边界的最大值
   const overlapX1 = Math.max(a.x1, b.x1);
@@ -185,7 +196,7 @@ export const calcOverlapArea = (a, b) => {
   return (overlapX2 - overlapX1) * (overlapY2 - overlapY1);
 };
 
-/** 判断两个标注是否满足重叠阈值条件 */
+// 判断两个标注是否满足重叠阈值条件。
 export const isOverlapThreshold = (a, b, threshold) => {
   const overlapArea = calcOverlapArea(a, b);
   if (overlapArea === 0) return false;
@@ -199,7 +210,7 @@ export const isOverlapThreshold = (a, b, threshold) => {
   return overlapRatio >= threshold;
 };
 
-/** 找出所有重叠的标注组（处理关联重叠：A与B重叠，B与C重叠 → 归为一组） */
+// 找出所有重叠的标注组，处理间接关联重叠。
 export const findOverlapGroups = (dets, threshold) => {
   const groups = []; // 存储重叠组，每个组是标注ID数组
   const detMap = new Map(); // key: det.id, value: det对象+面积
@@ -248,6 +259,7 @@ export const findOverlapGroups = (dets, threshold) => {
   return groups;
 };
 
+// 同时返回对象集合中的最小和最大面积。
 export const maxminArea = (objects) => {
   if (!objects || objects.length === 0) return [0, 0];
 

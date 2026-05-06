@@ -1,8 +1,8 @@
 {
   "displayName": "吹气袋实验",
   "description": "根据吹气袋、吸管的状态判定实验完成度。",
-  "isDefault": true,
-  "modelPath": "./best-bag.pt",
+  "isDefault": false,
+  "modelPath": "./model/best-bag.pt",
   "classNames": [
     "Testbag",
     "FoldedTestBag",

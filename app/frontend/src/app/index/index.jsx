@@ -5,6 +5,7 @@ import "./index.less";
 
 const { Title, Text } = Typography;
 
+// 默认 12 路摄像头槽位，和后端配置保持一致。
 const createEmptyCameras = () =>
   Array.from({ length: 12 }, (_, index) => ({
     id: `camera-${index + 1}`,
@@ -27,6 +28,7 @@ const createEmptyResultMap = () =>
     return accumulator;
   }, {});
 
+// 将服务端返回的分状态得分改成顺序评分视角，方便前端展示阻塞关系。
 const applySequentialScoring = (camera) => {
   const sourceStates = Array.isArray(camera?.stateResults) ? camera.stateResults : [];
   let canEvaluateCurrent = true;
@@ -66,6 +68,7 @@ const applySequentialScoring = (camera) => {
   };
 };
 
+// 主页面：实验选择、摄像头识别、实时刷新和结果展示。
 const College = () => {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -80,10 +83,12 @@ const College = () => {
   const [focusedCameraId, setFocusedCameraId] = useState(null);
   const analyzingRef = useRef(false);
 
+  // 用 ref 记录当前分析状态，避免并发重复触发。
   useEffect(() => {
     analyzingRef.current = analyzing;
   }, [analyzing]);
 
+  // 拉取实验列表、摄像头配置和当前激活实验。
   const fetchExperiments = async () => {
     setLoading(true);
     try {
@@ -120,6 +125,7 @@ const College = () => {
     fetchExperiments();
   }, []);
 
+  // 切换实验后先通知后端加载模型，再清空前一次结果。
   const handleSelectExperiment = async (value) => {
     setExperimentKey(value);
     const matched = experiments.find((item) => item.key === value) || null;
@@ -147,12 +153,14 @@ const College = () => {
         return;
       }
 
+      // 已有任务在跑时直接跳过，避免重复请求堆叠。
       if (analyzingRef.current) {
         return;
       }
 
       setAnalyzing(true);
       try {
+        // 实时模式下尽量减少传输量，仅对当前聚焦摄像头或图片白名单返回截图。
         const lightweightMode = isRealtime;
         const targetCameraIds = focusedCameraId ? [focusedCameraId] : [];
         const imageCameraIds = focusedCameraId
@@ -207,6 +215,7 @@ const College = () => {
     [cameras, experimentKey, selectedExperiment, whitelistOnly, focusedCameraId, isRealtime]
   );
 
+  // 进入实时模式后，持续触发批量识别。
   const startRealtime = () => {
     if (!experimentKey) {
       message.warning("请先选择实验");
@@ -217,10 +226,12 @@ const College = () => {
     handleAnalyzeAll({ silent: true });
   };
 
+  // 停止实时循环。
   const stopRealtime = () => {
     setIsRealtime(false);
   };
 
+  // 实时模式下通过循环请求刷新识别结果。
   useEffect(() => {
     if (!isRealtime || !experimentKey) {
       return;
@@ -252,6 +263,7 @@ const College = () => {
     [cameras, cameraResultMap]
   );
 
+  // 如果聚焦了单个摄像头，只展示对应卡片。
   const visibleCards = useMemo(() => {
     if (!focusedCameraId) {
       return cards;
@@ -259,6 +271,7 @@ const College = () => {
     return cards.filter((camera) => camera.id === focusedCameraId);
   }, [cards, focusedCameraId]);
 
+  // 点击卡片标题切换放大视图。
   const toggleFocus = (cameraId) => {
     setFocusedCameraId((prev) => (prev === cameraId ? null : cameraId));
   };
@@ -273,6 +286,7 @@ const College = () => {
 
   return (
     <div className="experiment-page">
+      {/* 顶部工具栏：实验选择、刷新和实时控制。 */}
       <div className="top-panel">
         <div>
           <Title level={2} className="title">
@@ -304,6 +318,7 @@ const College = () => {
           </Button>
         </Space>
       </div>
+      {/* 状态提示：告诉用户当前是否处于实时刷新中。 */}
       <div className="update-line">
         <Text type="secondary">
           实时状态：{isRealtime ? "运行中（连续刷新）" : "已停止"}
@@ -313,6 +328,7 @@ const College = () => {
         </Text>
       </div>
 
+      {/* 摄像头结果区：每路摄像头一张卡片。 */}
       <div className={`camera-grid ${focusedCameraId ? "camera-grid--focus" : ""}`}>
         {visibleCards.map((camera) => (
           <Card

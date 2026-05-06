@@ -2,7 +2,7 @@
   "displayName": "小灯泡实验",
   "description": "根据器材连接状态判定实验完成度。",
   "isDefault": true,
-  "modelPath": "./best-el.pt",
+  "modelPath": "./model/best-el.pt",
   "classNames": [
     "wire",
     "battery",

@@ -1,0 +1,9 @@
+{
+  "displayName": "小苏打和白醋混合",
+  "description": "小苏打和白醋混合实验。",
+  "isDefault": false,
+  "modelPath": "./model/best-soda.pt",
+  "classNames": [],
+  "stateRules": {},
+  "scoreRules": []
+}

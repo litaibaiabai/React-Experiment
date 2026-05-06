@@ -11,11 +11,13 @@ import base64
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# 模型缓存与当前激活模型状态，避免每次请求都重复加载权重。
 MODEL_CACHE = {}
 CURRENT_MODEL_PATH = None
 CURRENT_CLASS_NAMES = []
 
 
+# 按绝对路径加载或复用 YOLO 模型，并同步当前类别名。
 def load_model(model_path: str, class_names=None):
     global CURRENT_MODEL_PATH
     global CURRENT_CLASS_NAMES
@@ -33,11 +35,14 @@ def load_model(model_path: str, class_names=None):
 DEFAULT_MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, os.environ.get("MODEL_PATH", "best-el.pt")))
 model = load_model(DEFAULT_MODEL_PATH)
 
+
+# 健康检查接口，用于确认推理服务和当前模型状态。
 @app.get("/health")
 def health():
     return {"ok": True, "model": CURRENT_MODEL_PATH}
 
 
+# 切换当前加载的模型，并把类别名一并写入缓存状态。
 @app.post("/load-model")
 async def switch_model(payload: dict):
     try:
@@ -65,6 +70,8 @@ async def switch_model(payload: dict):
             content={"code": 500, "msg": "load model failed", "detail": str(error)}
         )
 
+
+# 单张图片推理接口：返回检测框和可选的标注图。
 @app.post("/detect")
 async def detect(
     image: UploadFile = File(...),
@@ -158,12 +165,10 @@ async def detect(
             }
         )
 
-# ==============================================
-# 所有启动配置直接写在这里
-# 端口：9000
-# 地址：0.0.0.0
+# 本地开发启动配置。
+# 运行地址：0.0.0.0
+# 端口：3008
 # 热重载：开启
-# ==============================================
 if __name__ == "__main__":
     uvicorn.run(
         "detect_server:app",

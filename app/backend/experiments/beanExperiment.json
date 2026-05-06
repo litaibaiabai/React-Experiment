@@ -1,0 +1,9 @@
+{
+  "displayName": "绿豆种子发芽是否需要水",
+  "description": "绿豆种子发芽是否需要水实验。",
+  "isDefault": false,
+  "modelPath": "./model/best-bean.pt",
+  "classNames": [],
+  "stateRules": {},
+  "scoreRules": []
+}

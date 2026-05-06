@@ -1,5 +1,6 @@
 const mode = import.meta.env.MODE;
 
+// 根据构建环境切换后端地址。
 var API_SERVER = "http://localhost:3001";
 
 if (mode === "development") {

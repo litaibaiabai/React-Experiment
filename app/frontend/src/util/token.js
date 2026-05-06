@@ -19,12 +19,12 @@
 
 // export default { loadUser, saveUser, removeUser, getToken };
 
-// 简单封装 token / 用户信息存储（可放 localStorage 或 sessionStorage）
-
+// 统一封装 token 和用户信息的本地存储操作。
 const USER_KEY = "APP_USER";
 const TOKEN_KEY = "AUTH_TOKEN";
 
 const token = {
+  // 保存用户对象，并同步写入 token。
   saveUser(user) {
     if (!user) return;
     try {
@@ -35,6 +35,7 @@ const token = {
     }
   },
 
+  // 读取当前缓存的用户对象。
   loadUser() {
     try {
       const u = localStorage.getItem(USER_KEY);
@@ -45,10 +46,12 @@ const token = {
     }
   },
 
+  // 读取当前 token。
   get() {
     return localStorage.getItem(TOKEN_KEY);
   },
 
+  // 清空用户和 token 缓存。
   clear() {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);

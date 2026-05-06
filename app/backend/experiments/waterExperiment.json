@@ -1,0 +1,9 @@
+{
+  "displayName": "温度和水的变化",
+  "description": "温度和水的变化实验。",
+  "isDefault": false,
+  "modelPath": "./model/best-water.pt",
+  "classNames": [],
+  "stateRules": {},
+  "scoreRules": []
+}

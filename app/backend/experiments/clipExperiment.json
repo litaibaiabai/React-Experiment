@@ -1,0 +1,9 @@
+{
+  "displayName": "做个回形针开关",
+  "description": "回形针开关实验。",
+  "isDefault": false,
+  "modelPath": "./model/best-clip.pt",
+  "classNames": [],
+  "stateRules": {},
+  "scoreRules": []
+}

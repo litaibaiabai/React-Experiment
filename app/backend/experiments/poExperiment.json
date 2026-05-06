@@ -1,7 +1,7 @@
 {
   "displayName": "斜坡模型",
   "description": "示例配置：切换到 best-po.pt 模型进行识别与评分。",
-  "modelPath": "./best-po.pt",
+  "modelPath": "./model/best-po.pt",
   "classNames": ["sphere", "cube", "prism", "cuboid"],
   "stateRules": {
     "sphere": {

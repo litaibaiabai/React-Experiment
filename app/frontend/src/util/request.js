@@ -2,20 +2,14 @@
 import axios from "axios";
 import { message } from "antd";
 
-/**
- * 创建 Axios 实例
- */
+// 统一的请求实例，集中处理 baseURL、超时和凭证策略。
 const service = axios.create({
   baseURL: process.env.NODE_ENV === "production" ? "/api" : "/dev-api", // 根据环境变量设置基础 URL
   timeout: 60000 * 5, // 请求超时时间
   withCredentials: false // 是否携带 cookie
 });
 
-/**
- * 处理请求头配置
- * @param {Object} config 请求配置
- * @returns {Object} 处理后的配置
- */
+// 为请求补齐默认请求头，并标记为 XHR 请求。
 const handleRequestHeader = (config) => {
   // 设置默认 Content-Type
   if (!config.headers["Content-Type"]) {
@@ -32,11 +26,7 @@ const handleRequestHeader = (config) => {
   return config;
 };
 
-/**
- * 处理认证信息（Token）
- * @param {Object} config 请求配置
- * @returns {Object} 处理后的配置
- */
+// 从本地存储中取出 token，附加到 Authorization 头。
 const handleAuth = (config) => {
   // 从 localStorage 获取 token
   const token = localStorage.getItem("AUTH_TOKEN") || sessionStorage.getItem("AUTH_TOKEN") || "";
@@ -48,10 +38,7 @@ const handleAuth = (config) => {
   return config;
 };
 
-/**
- * 处理网络错误
- * @param {Number} errStatus 错误状态码
- */
+// 统一翻译 HTTP 状态码，并在需要时跳转登录页。
 const handleNetworkError = (errStatus, skipRedirect = false) => {
   let errMessage = "未知错误";
 
@@ -110,11 +97,7 @@ const handleNetworkError = (errStatus, skipRedirect = false) => {
   return errMessage;
 };
 
-/**
- * 处理认证错误（业务错误码）
- * @param {String} errno 错误码
- * @returns {Boolean} 是否处理成功
- */
+// 处理后端业务层的认证错误码。
 const handleAuthError = (errno) => {
   const authErrMap = {
     10031: "登录失效，需要重新登录",
@@ -139,12 +122,7 @@ const handleAuthError = (errno) => {
   return true;
 };
 
-/**
- * 处理通用错误
- * @param {String} errno 错误码
- * @param {String} errmsg 错误消息
- * @returns {Boolean} 是否处理成功
- */
+// 处理通用业务错误码，非 0 即视为失败。
 const handleGeneralError = (errno, errmsg) => {
   if (errno !== "0" && errno !== 0) {
     message.error(errmsg || "操作失败");
@@ -153,9 +131,7 @@ const handleGeneralError = (errno, errmsg) => {
   return true;
 };
 
-/**
- * 请求拦截器
- */
+// 请求拦截器：统一补 header、写入 token。
 service.interceptors.request.use(
   (config) => {
     // 在发送请求之前做些什么
@@ -174,9 +150,7 @@ service.interceptors.request.use(
   }
 );
 
-/**
- * 响应拦截器
- */
+// 响应拦截器：统一处理成功响应、HTTP 错误和业务错误。
 service.interceptors.response.use(
   (response) => {
     // 隐藏 loading 动画（如果需要）
@@ -221,22 +195,12 @@ service.interceptors.response.use(
   }
 );
 
-/**
- * 通用请求方法
- * @param {Object} options 请求配置
- * @returns {Promise} Promise 对象
- */
+// 保留一个通用入口，方便特殊请求直接透传 axios 配置。
 const request = (options) => {
   return service(options);
 };
 
-/**
- * GET 请求
- * @param {String} url 请求地址
- * @param {Object} params 请求参数
- * @param {Object} config 其他配置
- * @returns {Promise} Promise 对象
- */
+// GET 请求封装。
 const get = (url, params = {}, config = {}) => {
   return service({
     method: "get",
@@ -246,13 +210,7 @@ const get = (url, params = {}, config = {}) => {
   });
 };
 
-/**
- * POST 请求
- * @param {String} url 请求地址
- * @param {Object} data 请求数据
- * @param {Object} config 其他配置
- * @returns {Promise} Promise 对象
- */
+// POST 请求封装。
 const post = (url, data = {}, config = {}) => {
   return service({
     method: "post",
@@ -262,13 +220,7 @@ const post = (url, data = {}, config = {}) => {
   });
 };
 
-/**
- * PUT 请求
- * @param {String} url 请求地址
- * @param {Object} data 请求数据
- * @param {Object} config 其他配置
- * @returns {Promise} Promise 对象
- */
+// PUT 请求封装。
 const put = (url, data = {}, config = {}) => {
   return service({
     method: "put",
@@ -278,13 +230,7 @@ const put = (url, data = {}, config = {}) => {
   });
 };
 
-/**
- * DELETE 请求
- * @param {String} url 请求地址
- * @param {Object} params 请求参数
- * @param {Object} config 其他配置
- * @returns {Promise} Promise 对象
- */
+// DELETE 请求封装。
 const del = (url, params = {}, config = {}) => {
   return service({
     method: "delete",
@@ -294,13 +240,7 @@ const del = (url, params = {}, config = {}) => {
   });
 };
 
-/**
- * 上传文件请求
- * @param {String} url 请求地址
- * @param {FormData} formData 表单数据
- * @param {Object} config 其他配置
- * @returns {Promise} Promise 对象
- */
+// 文件上传请求封装，固定 multipart/form-data 头。
 const upload = (url, formData, config = {}) => {
   return service({
     method: "post",

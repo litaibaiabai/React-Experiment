@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+// 训练类别 id 到中文名称的映射表。
 export const LABEL = {
   0: "照明灯",
   1: "筒灯",

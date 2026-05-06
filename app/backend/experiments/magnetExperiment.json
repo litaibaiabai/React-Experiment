@@ -1,0 +1,9 @@
+{
+  "displayName": "判断磁铁的磁极",
+  "description": "判断磁铁磁极实验。",
+  "isDefault": false,
+  "modelPath": "./model/best-magnet.pt",
+  "classNames": [],
+  "stateRules": {},
+  "scoreRules": []
+}
